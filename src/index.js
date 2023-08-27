@@ -134,6 +134,10 @@ class GitShow {
         head.appendChild(link);
     }
 
+    async ImportStyle(path) {
+
+    }
+
     runReveal() {
         this.deck = new Reveal(this.revealConfig);
         this.deck.initialize();
@@ -153,7 +157,7 @@ class GitShow {
             slide.setAttribute('data-markdown', '');
             //slide.innerHTML = '# Ahoj\nNazdar';
             slides.appendChild(slide);
-            let md = await this.presentation.getMarkdownFile(cont);
+            let md = await this.presentation.readFile(cont);
             let inslide = `<textarea data-template>${md.content}</textarea>`;
             slide.innerHTML = inslide;
             console.log(cont);

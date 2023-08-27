@@ -51,14 +51,14 @@ export class Presentation {
         return null;
     }
 
-    async readFile(fileData) {
-        return await this.apiClient.getFile(fileData.name);
+    async readFile(fname) {
+        return await this.apiClient.getFile(fname);
     }
 
     async readConfig() {
         const configFile = this.getConfigFile();
         if (configFile) {
-            const configData = await this.readFile(configFile)
+            const configData = await this.readFile(configFile.name)
             if (configData && configData.content) {
                 return JSON.parse(configData.content);
             } else {
@@ -73,16 +73,10 @@ export class Presentation {
         return this.config;
     }
 
-    async getMarkdownFile(fname) {
-        const fileData = this.getFileByName(this.rootFolderData, fname);
-        return await this.readFile(fileData);
-    }
-
     async getMarkdownContent() {
         let ret = [];
         for (let fname of this.config.contents) {
-            const fileData = this.getFileByName(this.rootFolderData, fname);
-            const file = await this.readFile(fileData);
+            const file = await this.readFile(fname);
             ret.push(file);
         }
         return ret;
@@ -91,7 +85,7 @@ export class Presentation {
     // ===========================================================================================
 
     async readTemplateDefinition() {
-        const data = await this.apiClient.getFile('template/template.json');
+        const data = await this.readFile('template/template.json');
         if (data && data.content) {
             let ret = JSON.parse(data.content);
             if (this.config.template?.properties) {
