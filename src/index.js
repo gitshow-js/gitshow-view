@@ -105,7 +105,7 @@ class GitShow {
         // use custom styles
         if (template.styles) {
             for (let sname of template.styles) {
-                this.addStyle('template/' + sname);
+                this.importStyle('template/' + sname);
             }
         }
         // update reveal config
@@ -134,8 +134,17 @@ class GitShow {
         head.appendChild(link);
     }
 
-    async ImportStyle(path) {
-
+    async importStyle(path) {
+        let css = await this.presentation.readFile(path);
+        if (css) {
+            const head = document.head || document.getElementsByTagName('head')[0];
+            const style = document.createElement('style');
+            style.setAttribute('type', 'text/css');
+            style.innerHTML = css.content;
+            head.appendChild(style);
+        } else {
+            console.error('Could not read ' + path);
+        }
     }
 
     runReveal() {
