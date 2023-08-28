@@ -56,6 +56,9 @@ class GitShow {
             if (config.reveal) {
                 this.updateRevealConfig(config.reveal);
             }
+            if (presentation.baseUrl) { // set base URL for relative links (assets)
+                this.updateRevealConfig({markdown: {baseUrl: presentation.baseUrl}});
+            }
             this.runReveal();
         } else {
             this.showError('Presentation config not found.');

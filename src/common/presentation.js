@@ -6,6 +6,7 @@ export class Presentation {
     status = {};
     config = {};
     template = {};
+    baseUrl = null;
 
     constructor(apiClient) {
         this.apiClient = apiClient;
@@ -23,8 +24,12 @@ export class Presentation {
         this.rootFolderData = await this.apiClient.getFileList();
         this.templateFolderData = await this.apiClient.getFileList('template');
         this.status = this.checkPresentationHealth(this.rootFolderData);
-        this.config = await this.readConfig();
-        this.template = await this.readTemplateDefinition();
+        if (this.status.ok) {
+            this.baseUrl = this.detectBaseUrl();
+            console.log('BASE = ' + this.baseUrl);
+            this.config = await this.readConfig();
+            this.template = await this.readTemplateDefinition();
+        }
     }
 
     checkPresentationHealth() {
@@ -53,6 +58,14 @@ export class Presentation {
 
     async readFile(fname) {
         return await this.apiClient.getFile(fname);
+    }
+
+    detectBaseUrl() {
+        const configFile = this.getConfigFile();
+        if (configFile) {
+            const url = configFile.download_url;
+            return url.substring(0, url.length - 'presentation.json'.length);
+        }
     }
 
     async readConfig() {
