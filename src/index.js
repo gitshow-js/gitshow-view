@@ -49,7 +49,7 @@ class GitShow {
         this.main = document.getElementById('gitshow-main');
         if (config.contents) {
             if (config.contents.length > 0) {
-                await this.createContent(config.contents);
+                await this.createContentLinks(config.contents);
             }
             this.template = this.parseTemplate(templateData, config);
             this.useTemplate(this.template);
@@ -155,7 +155,11 @@ class GitShow {
         this.deck.initialize();
     }
 
-    async createContent(contents) {
+    /**
+     * Creates the content sections by inserting links to markdown filed in the git repo.
+     * @param {*} contents 
+     */
+    async createContentLinks(contents) {
         this.main.innerHTML = '';
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
@@ -165,14 +169,37 @@ class GitShow {
         reveal.appendChild(slides);
 
         for (let cont of contents) {
+            const fileUrl = this.presentation.baseUrl + '/' + cont;
             const slide = document.createElement('section');
-            slide.setAttribute('data-markdown', '');
-            //slide.innerHTML = '# Ahoj\nNazdar';
+            slide.setAttribute('data-markdown', fileUrl);
             slides.appendChild(slide);
-            let md = await this.presentation.readFile(cont);
-            let inslide = `<textarea data-template>${md.content}</textarea>`;
-            slide.innerHTML = inslide;
-            console.log(cont);
+        }
+    }
+
+    /**
+     * Creates the content sections by fetching and inserting markdown code inline.
+     * @param {*} contents 
+     */
+    async createContentInline(contents) {
+        this.main.innerHTML = '';
+        const reveal = document.createElement('div');
+        reveal.setAttribute('class', 'reveal');
+        this.main.appendChild(reveal);
+        const slides = document.createElement('div');
+        slides.setAttribute('class', 'slides');
+        reveal.appendChild(slides);
+
+        for (let cont of contents) {
+            let fileData = this.presentation.getFileData(cont);
+            if (fileData) {
+                const slide = document.createElement('section');
+                slide.setAttribute('data-markdown', '');
+                //slide.innerHTML = '# Ahoj\nNazdar';
+                slides.appendChild(slide);
+                let md = await this.presentation.readFile(cont);
+                let inslide = `<textarea data-template>${md.content}</textarea>`;
+                slide.innerHTML = inslide;
+            }
         }
     }
 

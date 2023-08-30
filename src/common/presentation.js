@@ -43,8 +43,12 @@ export class Presentation {
         return  { ok: true, message: 'Presentation ok' }
     }
 
+    getFileData(name) {
+        return this.getFileByName(this.rootFolderData, name);
+    }
+
     getConfigFile() {
-        return this.getFileByName(this.rootFolderData, 'presentation.json');
+        return this.getFileData('presentation.json');
     }
 
     getFileByName(folderData, name) {
