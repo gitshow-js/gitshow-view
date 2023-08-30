@@ -140,14 +140,31 @@ class GitShow {
     async importStyle(path) {
         let css = await this.presentation.readFile(path);
         if (css) {
+            let cssdef = css.content;
+            if (this.presentation.baseUrl) {
+                cssdef = this.replaceUrlsWithBase(css.content, this.presentation.baseUrl);
+            }
             const head = document.head || document.getElementsByTagName('head')[0];
             const style = document.createElement('style');
             style.setAttribute('type', 'text/css');
-            style.innerHTML = css.content;
+            style.innerHTML = cssdef;
             head.appendChild(style);
         } else {
             console.error('Could not read ' + path);
         }
+    }
+
+    replaceUrlsWithBase(cssString, baseUrl) {
+        const urlRegex = /url\(['"]?([^'"]+)['"]?\)/g;
+        const ret = cssString.replace(urlRegex, (match, url) => {
+            // Check if the URL is absolute, if so, don't modify it
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+                return match;
+            }
+            // Prefix the URL with the base URL
+            return `url('${baseUrl}template/${url}')`;
+        });
+        return ret;
     }
 
     runReveal() {
