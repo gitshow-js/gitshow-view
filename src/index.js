@@ -48,11 +48,11 @@ class GitShow {
         console.log(this.presentationConfig);
         this.main = document.getElementById('gitshow-main');
         if (config.contents) {
+            this.template = this.parseTemplate(templateData, config);
+            this.useTemplate(this.template);
             if (config.contents.length > 0) {
                 await this.createContentLinks(config.contents);
             }
-            this.template = this.parseTemplate(templateData, config);
-            this.useTemplate(this.template);
             if (config.reveal) {
                 this.updateRevealConfig(config.reveal);
             }
@@ -160,6 +160,7 @@ class GitShow {
      * @param {*} contents 
      */
     async createContentLinks(contents) {
+        const defaultClass = this.template.defaultClass || 'normal';
         this.main.innerHTML = '';
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
@@ -171,6 +172,7 @@ class GitShow {
         for (let cont of contents) {
             const fileUrl = this.presentation.baseUrl + '/' + cont;
             const slide = document.createElement('section');
+            slide.setAttribute('class', defaultClass);
             slide.setAttribute('data-markdown', fileUrl);
             slides.appendChild(slide);
         }
@@ -181,6 +183,7 @@ class GitShow {
      * @param {*} contents 
      */
     async createContentInline(contents) {
+        const defaultClass = this.template.defaultClass || 'normal';
         this.main.innerHTML = '';
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
@@ -193,6 +196,7 @@ class GitShow {
             let fileData = this.presentation.getFileData(cont);
             if (fileData) {
                 const slide = document.createElement('section');
+                slide.setAttribute('class', defaultClass);
                 slide.setAttribute('data-markdown', '');
                 //slide.innerHTML = '# Ahoj\nNazdar';
                 slides.appendChild(slide);
