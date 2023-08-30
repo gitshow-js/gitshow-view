@@ -1,1 +1,35 @@
-/* Default style sheet */
+#gitshow-main .welcome {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #1f1f1f;
+    color: #8b949e;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: sans-serif;
+    letter-spacing: 0.2em;
+}
+
+#gitshow-main .welcome header {
+    text-align: center;
+}
+
+#gitshow-main .welcome h1 {
+    font-size: 450%;
+    margin: 0 0 0.3em 0;
+    font-weight: normal;
+    font-variant: small-caps;
+    letter-spacing: 0.2em;
+}
+
+#gitshow-main .welcome p {
+    margin: 1.8em 0;
+}
+
+#gitshow-main .welcome a {
+    color: white;
+}
