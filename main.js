@@ -10,6 +10,13 @@ function showMessage(msg) {
     document.getElementById('gitshow-message').innerHTML = msg;
 }
 
+function showStructuredMessage(msg) {
+    let ret = '';
+    if (msg.code) ret = ret + `<p class="code">${msg.code}</p>`;
+    ret = ret + `<p class="description">${msg.message}</p>`;
+    document.getElementById('gitshow-message').innerHTML = ret;
+}
+
 function authFailed() {
     console.log('AUTH FAILED');
 }
@@ -49,13 +56,17 @@ if (path && path !== '/') {
 
     if (apiClient) {
         (async () => {
-            showMessage("Loading presentation...")
+            showMessage("Presentation loading...");
             let presentation = new Presentation(apiClient);
             await presentation.refreshFolder();
-            let gitShow = new GitShow();
-            await gitShow.init(presentation);
+            if (presentation.status.ok) {
+                let gitShow = new GitShow();
+                await gitShow.init(presentation);
+            } else {
+                showStructuredMessage(presentation.status);
+            }
         })();
     } else {
-        showMessage('Sorry, no such presentation. Please check your URL.');
+        showMessage('Sorry, invalid presentation coordinates. Please check your URL.');
     }
 }

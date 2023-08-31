@@ -126,6 +126,9 @@ export class GHClient {
             headers: this.headers(),
         });
         this.checkAuth(response);
+        if (response.status >= 300) {
+            throw new Error(response.statusText);
+        }
         const data = await response.json();
         return data;
     }

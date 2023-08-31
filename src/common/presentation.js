@@ -21,9 +21,13 @@ export class Presentation {
     }
 
     async refreshFolder() {
-        this.rootFolderData = await this.apiClient.getFileList();
-        this.templateFolderData = await this.apiClient.getFileList('template');
-        this.status = this.checkPresentationHealth(this.rootFolderData);
+        try {
+            this.rootFolderData = await this.apiClient.getFileList();
+            this.templateFolderData = await this.apiClient.getFileList('template');
+            this.status = this.checkPresentationHealth(this.rootFolderData);
+        } catch (e) {
+            this.status = { ok: false, code: 404, message: "Presentation data not found" }
+        }
         if (this.status.ok) {
             this.baseUrl = this.detectBaseUrl();
             console.log('BASE = ' + this.baseUrl);
@@ -36,7 +40,7 @@ export class Presentation {
         // must contain presentation.json
         const pconfig = this.getConfigFile();
         if (!pconfig) {
-            return { ok: false, message: 'The folder does not contain the presentation.json file' }
+            return { ok: false, message: 'The source folder does not contain the presentation.json file' }
         }
         // TODO check template and contents
         // all ok

@@ -12,24 +12,30 @@
     justify-content: center;
     font-family: sans-serif;
     letter-spacing: 0.2em;
-}
-
-#gitshow-main .welcome header {
     text-align: center;
 }
 
 #gitshow-main .welcome h1 {
-    font-size: 450%;
-    margin: 0 0 0.3em 0;
+    font-size: 120%;
+    margin: 0 0 0 0;
     font-weight: normal;
     font-variant: small-caps;
     letter-spacing: 0.2em;
 }
 
 #gitshow-main .welcome p {
-    margin: 1.8em 0;
+    margin: 0.5em 0;
 }
 
 #gitshow-main .welcome a {
     color: white;
+}
+
+#gitshow-main #gitshow-message {
+    font-size: 150%;
+    margin: 5em 0;
+}
+
+#gitshow-main #gitshow-message .code {
+    font-size: 200%;
 }
