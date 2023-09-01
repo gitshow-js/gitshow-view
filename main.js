@@ -6,6 +6,10 @@ import GitShow from './src/index.js';
 import { GHClient } from './src/fs/ghclient.js'
 import { Presentation } from './src/common/presentation.js';
 
+function setMode(mode) {
+    document.getElementById('gitshow-welcome').setAttribute('class', mode);
+}
+
 function showMessage(msg) {
     document.getElementById('gitshow-message').innerHTML = msg;
 }
@@ -39,11 +43,8 @@ function createApiClient(service, user, repo, folders) {
     }
 }
 
-// Create the api client. Use the params from the path
-// in the expected form /service/user/repo/path/elements
-let apiClient = null;
-const path = window.location.pathname;
-if (path && path !== '/') {
+function startPresentation(path) {
+    setMode('start');
     let pdata = path.split('/');
     pdata.shift(); //the leading '/' in the path
     if (pdata.length >= 3) {
@@ -56,6 +57,7 @@ if (path && path !== '/') {
 
     if (apiClient) {
         (async () => {
+            setMode('start loading');
             showMessage("Presentation loading...");
             let presentation = new Presentation(apiClient);
             await presentation.refreshFolder();
@@ -63,10 +65,19 @@ if (path && path !== '/') {
                 let gitShow = new GitShow();
                 await gitShow.init(presentation);
             } else {
+                setMode('start');
                 showStructuredMessage(presentation.status);
             }
         })();
     } else {
         showMessage('Sorry, invalid presentation coordinates. Please check your URL.');
     }
+}
+
+// Create the api client. Use the params from the path
+// in the expected form /service/user/repo/path/elements
+let apiClient = null;
+const path = window.location.pathname;
+if (path && path !== '/') {
+    startPresentation(path);
 }

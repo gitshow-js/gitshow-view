@@ -26,7 +26,8 @@ export class Presentation {
             this.templateFolderData = await this.apiClient.getFileList('template');
             this.status = this.checkPresentationHealth(this.rootFolderData);
         } catch (e) {
-            this.status = { ok: false, code: 404, message: "Presentation data not found" }
+            let url = this.apiClient.getSourceUrl();
+            this.status = { ok: false, code: 404, message: `Presentation data not found in the referenced repository<br><a href="${url}">${url}</code>` };
         }
         if (this.status.ok) {
             this.baseUrl = this.detectBaseUrl();

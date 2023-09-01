@@ -8,6 +8,8 @@ export class GHClient {
     username = '';
     repository = '';
     folder = '';
+    branch = '';
+    defaultBranch = 'main';
     onNotAuthorized = null;
 
     setUser(username) {
@@ -20,6 +22,24 @@ export class GHClient {
 
     setFolder(path) {
         this.folder = path;
+    }
+
+    /**
+     * The URL of the source presentation on GitHub (for user reference)
+     */
+    getSourceUrl() {
+        let ret = `https://github.com/${this.username}/${this.repository}`;
+        if (this.branch && this.branch !== this.defaultBranch) {
+            ret += `/tree/{$this.branch}`;
+            if (this.folder) {
+                ret += `/${this.folder}`;
+            }
+        } else {
+            if (this.folder) {
+                ret += `/tree/${this.defaultBranch}/${this.folder}`;
+            }
+        }
+        return ret;
     }
 
     //===================================================================================
