@@ -25,7 +25,7 @@ function authFailed() {
     console.log('AUTH FAILED');
 }
 
-function createApiClient(service, user, repo, folders) {
+async function createApiClient(service, user, repo, branch, folders) {
     let path = '';
     if (folders) {
         path = folders.join('/');
@@ -35,6 +35,11 @@ function createApiClient(service, user, repo, folders) {
         apiClient.setUser(user);
         apiClient.setRepository(repo);
         apiClient.setFolder(path);
+        if (branch) {
+            apiClient.setBranch(branch);
+        } else {
+            await apiClient.useDefaultBranch();
+        }
         apiClient.onNotAuthorized = authFailed;
         return apiClient;
     } else {
@@ -43,32 +48,43 @@ function createApiClient(service, user, repo, folders) {
     }
 }
 
-function startPresentation(path) {
+function sanitizeName(inputString) {
+    return inputString.replace(/[^a-zA-Z0-9-_]/g, '');
+}
+
+async function startPresentation(path) {
     setMode('start');
     let pdata = path.split('/');
     pdata.shift(); //the leading '/' in the path
     if (pdata.length >= 3) {
         const service = pdata[0];
-        const user = pdata[1];
-        const repo = pdata[2];
+        const user = sanitizeName(pdata[1]);
+        let branch = null;
+        let repo = pdata[2];
         const folders = pdata.slice(3);
-        apiClient = createApiClient(service, user, repo, folders);
-    }
 
+        let pos = repo.indexOf('@');
+        if (pos > 0) {
+            branch = sanitizeName(repo.substring(pos + 1));
+            repo = sanitizeName(repo.substring(0, pos));
+        } else {
+            repo = sanitizeName(repo);
+        }
+
+        apiClient = await createApiClient(service, user, repo, branch, folders);
+    }
     if (apiClient) {
-        (async () => {
-            setMode('start loading');
-            showMessage("Presentation loading...");
-            let presentation = new Presentation(apiClient);
-            await presentation.refreshFolder();
-            if (presentation.status.ok) {
-                let gitShow = new GitShow();
-                await gitShow.init(presentation);
-            } else {
-                setMode('start');
-                showStructuredMessage(presentation.status);
-            }
-        })();
+        setMode('start loading');
+        showMessage("Presentation loading...");
+        let presentation = new Presentation(apiClient);
+        await presentation.refreshFolder();
+        if (presentation.status.ok) {
+            let gitShow = new GitShow();
+            await gitShow.init(presentation);
+        } else {
+            setMode('start');
+            showStructuredMessage(presentation.status);
+        }
     } else {
         showMessage('Sorry, invalid presentation coordinates. Please check your URL.');
     }

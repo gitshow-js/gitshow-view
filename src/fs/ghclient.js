@@ -24,13 +24,21 @@ export class GHClient {
         this.folder = path;
     }
 
+    setBranch(name) {
+        this.branch = name;
+    }
+
+    async useDefaultBranch() {
+        this.branch = await this.getDefaultBranch();
+    }
+
     /**
      * The URL of the source presentation on GitHub (for user reference)
      */
     getSourceUrl() {
         let ret = `https://github.com/${this.username}/${this.repository}`;
         if (this.branch && this.branch !== this.defaultBranch) {
-            ret += `/tree/{$this.branch}`;
+            ret += `/tree/${this.branch}`;
             if (this.folder) {
                 ret += `/${this.folder}`;
             }
@@ -49,8 +57,15 @@ export class GHClient {
     }
 
     fileEndpoint(path) {
-        const fpath = this.folder ? (this.folder + '/' + path) : path;
-        return this.repositoryEndpoint() + '/contents/' + fpath;
+        let fpath = this.folder || '';
+        if (path && path.length > 0) {
+            fpath = fpath + '/' + path;
+        }
+        let rpath = '/contents';
+        if (fpath.length > 0) {
+            rpath = rpath + '/' + fpath;
+        }
+        return this.repositoryEndpoint() + rpath + '?ref=' + this.branch;
     }
 
     //===================================================================================
@@ -70,6 +85,14 @@ export class GHClient {
 	logout() {
 		localStorage.removeItem('ghtoken');
 	}
+
+    async getDefaultBranch() {
+        const response = await fetch(this.repositoryEndpoint(), {
+            headers: this.headers(),
+        });
+        const data = await response.json();
+        return data.default_branch;
+    }
 
     async login(token) {
         localStorage.setItem('ghtoken', token);
