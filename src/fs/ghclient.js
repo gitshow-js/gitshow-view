@@ -184,7 +184,7 @@ export class GHClient {
         });
         this.checkAuth(response);
         const data = await response.json();
-        const content = window.atob(data.content);
+        const content = this.decodeBase64Text(data.content);
         return {
             content: content,
             sha: data.sha
@@ -208,5 +208,11 @@ export class GHClient {
         }
     }
     
+    // see https://developer.mozilla.org/en-US/docs/Glossary/Base64#the_unicode_problem
+    decodeBase64Text(base64) {
+        const binString = window.atob(base64);
+        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
+        return new TextDecoder().decode(bytes);
+    }
 
 }
