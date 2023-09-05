@@ -39,7 +39,7 @@ class GitShow {
 
     async init(presentation) {
         const config = presentation.getConfig();
-        const templateData = JSON.stringify(presentation.template);
+        const template = presentation.template;
         this.presentationConfig = config;
         this.presentation = presentation;
 
@@ -48,7 +48,7 @@ class GitShow {
         console.log(this.presentationConfig);
         this.main = document.getElementById('gitshow-main');
         if (config.contents) {
-            this.template = this.parseTemplate(templateData, config);
+            this.template = this.parseTemplate(template, config);
             this.useTemplate(this.template);
             if (config.contents.length > 0) {
                 await this.createContentLinks(config.contents);
@@ -68,8 +68,7 @@ class GitShow {
         }
     }
 
-    parseTemplate(templateData, config) {
-        let template = JSON.parse(templateData);
+    parseTemplate(template, config) {
         if (config.template?.properties) {
             template = this.replacePlaceholders(template, config.template.properties);
         }
