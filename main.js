@@ -17,7 +17,7 @@ function showMessage(msg) {
 function showStructuredMessage(msg) {
     let ret = '';
     if (msg.code) ret = ret + `<p class="code">${msg.code}</p>`;
-    ret = ret + `<p class="description">${msg.message}</p>`;
+    ret = ret + `<div class="report">${msg.message}</div>`;
     document.getElementById('gitshow-message').innerHTML = ret;
 }
 

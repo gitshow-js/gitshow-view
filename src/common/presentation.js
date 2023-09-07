@@ -21,14 +21,29 @@ export class Presentation {
     }
 
     async refreshFolder() {
+        let healthMsg = '';
+        let url = this.apiClient.getSourceUrl();
+        // load the presentation root folder
         try {
             this.rootFolderData = await this.apiClient.getFileList();
-            this.templateFolderData = await this.apiClient.getFileList('template');
-            this.status = this.checkPresentationHealth(this.rootFolderData);
+            healthMsg = `<p><span class="ok"></span> The presentation source folder exists:<br><a href="${url}">${url}</a></p>`;
         } catch (e) {
-            let url = this.apiClient.getSourceUrl();
-            this.status = { ok: false, code: 404, message: `Presentation data not found in the referenced repository<br><a href="${url}">${url}</code>` };
+            this.status = { ok: false, code: 404, message: `<p><span class="error"></span> The referenced repository or folder does not exist:<br><a href="${url}">${url}</a></p>` };
+            return;
         }
+        // load the presentation template folder
+        try {
+            this.templateFolderData = await this.apiClient.getFileList('template');
+            healthMsg += `<p><span class="ok"></span> The template folder exists within the source folder</p>`;
+        } catch (e) {
+            healthMsg += `<p><span class="error"></span> The template folder does not exist within the source folder</p>`;
+            this.status = { ok: false, code: 404, message: healthMsg };
+            return;
+        }
+        // check the presentation config files and contents
+        this.status = this.checkPresentationHealth(this.rootFolderData);
+        // concatenate the results of all checks
+        this.status.message = healthMsg + this.status.message;
         if (this.status.ok) {
             this.baseUrl = this.detectBaseUrl();
             console.log('BASE = ' + this.baseUrl);
@@ -41,7 +56,11 @@ export class Presentation {
         // must contain presentation.json
         const pconfig = this.getConfigFile();
         if (!pconfig) {
-            return { ok: false, message: 'The source folder does not contain the presentation.json file' }
+            return { ok: false, code: 'Error', message: '<p><span class="error"></span> The source folder does not contain the <code>presentation.json</code> file</p>' };
+        }
+        const tconfig = this.getFileByName(this.templateFolderData, 'template.json');
+        if (!tconfig) {
+            return { ok: false, code: 'Error', message: '<p><span class="error"></span> The source folder does not contain the <code>template/template.json</code> file</p>' };
         }
         // TODO check template and contents
         // all ok
