@@ -12,6 +12,19 @@
             <div id="gitshow-message"></div>
             <h1>GitShow</h1>
             <p><a href="https://github.com/radkovo/gitshow">https://github.com/gitshow-js/gitshow</a></p>
+            <div class="show">
+                <div id="gitshow-show1">
+                    <button type="button" id="gitshow-show">Show a presentation</button>
+                    <p>How to <a href="https://github.com/gitshow-js/gitshow#readme" target="_blank">create a presentation</a>?</p>
+                </div>
+                <div id="gitshow-show2" style="display: none;">
+                    <form>
+                        <label for="gitshow-url">GitHub URL of the presentation</label><br>
+                        <input type="text" id="gitshow-url" size="40"><br>
+                        <button type="button" id="gitshow-run" style="display: none;">Show</button>
+                    </form>
+                </div>
+            </div>
         </main>
     </div>
     <script type="module" src="/main.js"></script>

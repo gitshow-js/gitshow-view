@@ -90,6 +90,11 @@ async function startPresentation(path) {
     }
 }
 
+document.getElementById('gitshow-show').onclick = function() {
+    document.getElementById('gitshow-show1').style.display = 'none';
+    document.getElementById('gitshow-show2').style.display = 'block';
+}
+
 // Create the api client. Use the params from the path
 // in the expected form /service/user/repo/path/elements
 let apiClient = null;
