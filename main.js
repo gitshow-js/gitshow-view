@@ -90,9 +90,62 @@ async function startPresentation(path) {
     }
 }
 
-document.getElementById('gitshow-show').onclick = function() {
+function parseGitHubUrl(url) {
+    const githubUrlRegex = /^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+)(?:\/([^/]+))?)?\/?$/;
+    const match = url.match(githubUrlRegex);
+    if (match) {
+        const [, username, repo, branch, path] = match;
+        return {
+            service: 'gh',
+            username,
+            repo,
+            branch,
+            path,
+        };
+    }
+    return null;
+}
+
+function createGitShowUrl(spec) {
+    let ret = `${window.location.origin}/${spec.service}/${spec.username}/${spec.repo}`;
+    if (spec.branch) {
+        ret = ret + '@' + spec.branch;
+    }
+    if (spec.path) {
+        ret = ret + '/' + spec.path;
+    }
+    return ret;
+}
+
+let destUrl = null;
+
+document.getElementById('gitshow-show').onclick = function () {
     document.getElementById('gitshow-show1').style.display = 'none';
     document.getElementById('gitshow-show2').style.display = 'block';
+}
+
+document.getElementById('gitshow-url').onkeyup = function (ev) {
+    const url = ev.target.value;
+    const result = document.getElementById('gitshow-desturl');
+    destUrl = null;
+    if (url.length > 0) {
+        const urlData = parseGitHubUrl(url);
+        if (urlData) {
+            destUrl = createGitShowUrl(urlData);
+            result.innerHTML = `Your GitShow view URL:<br><a href="${destUrl}">${destUrl}</a>`;
+            document.getElementById('gitshow-run').style.display = 'inline';
+        } else {
+            result.innerHTML = 'Not a GitHub repository URL. Please open the corresponding GitHub folder in your browser and copy the URL here.';
+        }
+    } else {
+        result.innerHTML = '';
+    }
+}
+
+document.getElementById('gitshow-run').onclick = function () {
+    if (destUrl) {
+        window.location.href = destUrl;
+    }
 }
 
 // Create the api client. Use the params from the path

@@ -14,13 +14,14 @@
             <p><a href="https://github.com/radkovo/gitshow">https://github.com/gitshow-js/gitshow</a></p>
             <div class="show">
                 <div id="gitshow-show1">
-                    <button type="button" id="gitshow-show">Show a presentation</button>
+                    <button type="button" id="gitshow-show">Open a presentation</button>
                     <p>How to <a href="https://github.com/gitshow-js/gitshow#readme" target="_blank">create a presentation</a>?</p>
                 </div>
                 <div id="gitshow-show2" style="display: none;">
-                    <form>
-                        <label for="gitshow-url">GitHub URL of the presentation</label><br>
+                    <form onsubmit="return false">
+                        <label for="gitshow-url">Please enter the GitHub URL of the presentation</label><br>
                         <input type="text" id="gitshow-url" size="40"><br>
+                        <p id="gitshow-desturl"></p>
                         <button type="button" id="gitshow-run" style="display: none;">Show</button>
                     </form>
                 </div>

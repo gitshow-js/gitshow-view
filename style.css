@@ -79,7 +79,7 @@
 
 #gitshow-welcome .show p, #gitshow-welcome .show form {
     margin: 1em;
-    font-size: 80%;
+    font-size: 0.8rem;
 }
 
 #gitshow-welcome button, #gitshow-welcome input {
@@ -100,6 +100,11 @@
 
 #gitshow-welcome button:hover {
    background-color: #2f2f2f;
+}
+
+#gitshow-welcome #gitshow-run {
+    color: white;
+    border-color: white;
 }
 
 /* ==== Start and loading mode ==== */
