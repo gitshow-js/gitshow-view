@@ -133,12 +133,17 @@ document.getElementById('gitshow-url').onkeyup = function (ev) {
         if (urlData) {
             destUrl = createGitShowUrl(urlData);
             result.innerHTML = `Your GitShow view URL:<br><a href="${destUrl}">${destUrl}</a>`;
+            result.setAttribute('class', 'ready');
             document.getElementById('gitshow-run').style.display = 'inline';
         } else {
             result.innerHTML = 'Not a GitHub repository URL. Please open the corresponding GitHub folder in your browser and copy the URL here.';
+            result.setAttribute('class', 'notready');
+            document.getElementById('gitshow-run').style.display = 'none';
         }
     } else {
         result.innerHTML = '';
+        result.setAttribute('class', 'empty');
+        document.getElementById('gitshow-run').style.display = 'none';
     }
 }
 
