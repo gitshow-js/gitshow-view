@@ -10,7 +10,7 @@ This web application displays a [GitShow](https://github.com/gitshow-js/gitshow/
 4. Go to [gitshow.net](https://gitshow.net/) and provide your GitHub repository (or a specific folder) URL.
 5. You will get a direct link for showing the presentation online.
 
-Alternatively, you may build and install your own instance of the viewer on your servers (see [Installation](https://github.com/gitshow-js/gitshow#readme) below).
+Alternatively, you may build and install your own instance of the viewer on your servers (see [Installation](https://github.com/gitshow-js/gitshow-view#installation) below).
 
 ## Demos
 
