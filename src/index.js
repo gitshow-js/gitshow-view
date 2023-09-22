@@ -44,7 +44,7 @@ class GitShow {
         this.presentation = presentation;
 
         console.log('Welcome to GitShow!');
-        console.log('https://github.com/radkovo/gitshow');
+        console.log('https://github.com/gitshow-js');
         console.log(this.presentationConfig);
         this.main = document.getElementById('gitshow-main');
         if (config.contents) {
@@ -60,12 +60,16 @@ class GitShow {
                 this.updateRevealConfig({markdown: {baseUrl: presentation.baseUrl}});
             }
             if (config.title) {
-                document.title = config.title;
+                this.showTitle(config.title);
             }
             this.runReveal();
         } else {
             this.showError('Presentation config not found.');
         }
+    }
+
+    showTitle(title) {
+        document.title = title;
     }
 
     parseTemplate(template, config) {

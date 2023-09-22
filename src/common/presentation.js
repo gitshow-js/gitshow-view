@@ -114,6 +114,17 @@ export class Presentation {
         return this.config;
     }
 
+    getContentFiles() {
+        let ret = [];
+        for (let fname of this.config.contents) {
+            const file = this.getFileByName(this.rootFolderData, fname);
+            if (file) {
+                ret.push(file);
+            }
+        }
+        return ret;
+    }
+
     async getMarkdownContent() {
         let ret = [];
         for (let fname of this.config.contents) {
