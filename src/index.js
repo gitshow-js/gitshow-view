@@ -62,7 +62,7 @@ class GitShow {
             if (config.title) {
                 this.showTitle(config.title);
             }
-            this.runReveal();
+            await this.runReveal();
         } else {
             this.showError('Presentation config not found.');
         }
@@ -173,9 +173,9 @@ class GitShow {
         return ret;
     }
 
-    runReveal() {
+    async runReveal() {
         this.deck = new Reveal(this.revealConfig);
-        this.deck.initialize();
+        await this.deck.initialize();
     }
 
     /**
