@@ -91,7 +91,8 @@ async function startPresentation(path) {
 }
 
 function parseGitHubUrl(url) {
-    const githubUrlRegex = /^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+)(?:\/([^/]+))?)?\/?$/;
+    //const githubUrlRegex = /^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+)(?:\/([^/]+))?)?\/?$/;
+    const githubUrlRegex = /^(?:https?:\/\/?github\.com\/)([^/]+)\/([^/]+)(?:\/tree\/([^/]+)\/?(.*)?)?$/;
     const match = url.match(githubUrlRegex);
     if (match) {
         const [, username, repo, branch, path] = match;
@@ -103,6 +104,23 @@ function parseGitHubUrl(url) {
             path,
         };
     }
+    return null;
+}
+
+function parseGitHubCloneUri(uri) {
+    const githubCloneUriRegex = /^(https:\/\/github\.com|git@github\.com:)([^/]+)\/([^/]+)(?:\.git)?(?:\/tree\/([^/]+)\/?(.*)?)?$/;
+    const match = uri.match(githubCloneUriRegex);
+    if (match) {
+        const [, scheme, username, repo, branch, path] = match;
+        return {
+            service: 'gh',
+            username,
+            repo: repo.replace(/\.git$/, ''), // Remove '.git' if present
+            branch: branch || 'master',
+            path: path || '', // Allow multiple folders in the path
+        };
+    }
+
     return null;
 }
 
@@ -129,7 +147,11 @@ document.getElementById('gitshow-url').onkeyup = function (ev) {
     const result = document.getElementById('gitshow-desturl');
     destUrl = null;
     if (url.length > 0) {
-        const urlData = parseGitHubUrl(url);
+        let urlData = parseGitHubUrl(url);
+        if (!urlData) {
+            // not a GitHub URL, check for a clone URI
+            urlData = parseGitHubCloneUri(url);
+        }
         if (urlData) {
             destUrl = createGitShowUrl(urlData);
             result.innerHTML = `Your GitShow view URL:<br><a href="${destUrl}">${destUrl}</a>`;
