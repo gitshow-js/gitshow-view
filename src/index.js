@@ -277,6 +277,8 @@ class GitShow {
             const slide = document.createElement('section');
             slide.setAttribute('class', defaultClass);
             slide.setAttribute('data-markdown', fileUrl);
+            slide.setAttribute('data-separator', '^---');
+            slide.setAttribute('data-separator-vertical', '^=--');
             slides.appendChild(slide);
         }
     }
@@ -301,6 +303,8 @@ class GitShow {
                 const slide = document.createElement('section');
                 slide.setAttribute('class', defaultClass);
                 slide.setAttribute('data-markdown', '');
+                slide.setAttribute('data-separator', '^---');
+                slide.setAttribute('data-separator-vertical', '^=--');
                 //slide.innerHTML = '# Ahoj\nNazdar';
                 slides.appendChild(slide);
                 let md = await this.presentation.readFile(cont);
