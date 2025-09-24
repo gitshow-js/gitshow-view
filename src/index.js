@@ -99,7 +99,13 @@ class GitShow {
             if (config.usePlugins) {
                 this.addPlugins(config.usePlugins);
             }
+
             await this.runReveal();
+
+            if (presentation.baseUrl) {
+                this.replaceRelativeAssets(presentation.baseUrl);
+            }
+
         } else {
             this.showError('Presentation config not found.');
         }
@@ -239,6 +245,9 @@ class GitShow {
         }
     }
 
+    /**
+     * Replaces URLs in a CSS style sheets with the base URL.
+     */
     replaceUrlsWithBase(cssString, baseUrl) {
         const urlRegex = /url\(['"]?([^'"]+)['"]?\)/g;
         const ret = cssString.replace(urlRegex, (match, url) => {
@@ -250,6 +259,20 @@ class GitShow {
             return `url('${baseUrl}template/${url}')`;
         });
         return ret;
+    }
+
+    /**
+     * Replaces the relative image URLs in the presentation with the base URL.
+     * @param {string} baseUrl 
+     */
+    replaceRelativeAssets(baseUrl) {
+        const SEL = '.reveal .slides img[src]:not([src*="://"])';
+        const imgs = document.querySelectorAll(SEL);
+        for (let img of imgs) {
+            const src = img.getAttribute('src');
+            const newSrc = `${baseUrl}${src}`;
+            img.setAttribute('src', newSrc);
+        }
     }
 
     async runReveal() {
