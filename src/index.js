@@ -67,6 +67,16 @@ class GitShow {
         plugins: [], // to be filled after all config files are loaded
     };
 
+    /**
+     * Elements and attributes where the relative URLs are resolved. This can be extended in the template config
+     * and the presentation config in the resolvedRelativeAssets array.
+     */
+    resolvedRelativeAssets = [
+        { selector: '.reveal .slides img[src]:not([src*="://"])', attrName: 'src' },  // images
+        { selector: '.reveal .slides a[href]:not([href*="://"])', attrName: 'href' }, // links
+        { selector: '.reveal .slides source[src]:not([src*="://"])', attrName: 'src' },  // videos
+    ];
+
     async init(presentation) {
         const config = presentation.getConfig();
         const template = presentation.template;
@@ -99,11 +109,14 @@ class GitShow {
             if (config.usePlugins) {
                 this.addPlugins(config.usePlugins);
             }
+            if (config.resolvedRelativeAssets) {
+                this.resolvedRelativeAssets.push(...config.resolvedRelativeAssets);
+            }
 
             await this.runReveal();
 
             if (presentation.baseUrl) {
-                this.replaceRelativeAssets(presentation.baseUrl);
+                this.resolveRelativeAssets(presentation.baseUrl);
             }
 
         } else {
@@ -206,6 +219,10 @@ class GitShow {
         if (template.usePlugins) {
             this.addPlugins(template.usePlugins);
         }
+        // add resolved assets
+        if (template.resolvedRelativeAssets) {
+            this.resolvedRelativeAssets.push(...template.resolvedRelativeAssets);
+        }
     }
 
     getPresentationConfig() {
@@ -262,16 +279,21 @@ class GitShow {
     }
 
     /**
-     * Replaces the relative image URLs in the presentation with the base URL.
+     * Resolves the relative URLs in the specified elements and attributes with the base URL.
      * @param {string} baseUrl 
      */
-    replaceRelativeAssets(baseUrl) {
-        const SEL = '.reveal .slides img[src]:not([src*="://"])';
-        const imgs = document.querySelectorAll(SEL);
-        for (let img of imgs) {
-            const src = img.getAttribute('src');
+    resolveRelativeAssets(baseUrl) {
+        for (let spec of this.resolvedRelativeAssets) {
+            this.resolveRelativeAsset(spec.selector, spec.attrName, baseUrl);
+        }
+    }
+
+    resolveRelativeAsset(selector, attrName, baseUrl) {
+        const elements = document.querySelectorAll(selector);
+        for (let elem of elements) {
+            const src = elem.getAttribute(attrName);
             const newSrc = `${baseUrl}${src}`;
-            img.setAttribute('src', newSrc);
+            elem.setAttribute(attrName, newSrc);
         }
     }
 
