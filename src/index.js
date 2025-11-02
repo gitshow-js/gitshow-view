@@ -5,6 +5,7 @@ import RevealHighlight from 'reveal.js/plugin/highlight/highlight.esm.js';
 import RevealMath from 'reveal.js/plugin/math/math.esm.js';
 import RevealSearch from 'reveal.js/plugin/search/search.esm.js';
 import RevealZoom from 'reveal.js/plugin/zoom/zoom.esm.js';
+//let RevealSpotlight = require('./plugin/spotlight/spotlight.js');
 
 import GitShowRewrite from './plugin/rewrite/plugin.js';
 import GitShowReferences from './plugin/references/plugin.js';
@@ -12,7 +13,8 @@ import GitShowRender from './plugin/render/plugin.js';
 import GitShowMonaco from "./plugin/monaco/plugin.js";
 import GitShowLayout from "./plugin/layout/plugin.js";
 
-//let RevealSpotlight = require('./plugin/spotlight/spotlight.js');
+// this should be the last one, it resolves the relative URLs including those produced by other plugins
+import GitShowBaseurl from './plugin/baseurl/plugin.js';
 
 
 class GitShow {
@@ -67,16 +69,6 @@ class GitShow {
         plugins: [], // to be filled after all config files are loaded
     };
 
-    /**
-     * Elements and attributes where the relative URLs are resolved. This can be extended in the template config
-     * and the presentation config in the resolvedRelativeAssets array.
-     */
-    resolvedRelativeAssets = [
-        { selector: '.reveal .slides img[src]:not([src*="://"])', attrName: 'src' },  // images
-        { selector: '.reveal .slides a[href]:not([href*="://"])', attrName: 'href' }, // links
-        { selector: '.reveal .slides source[src]:not([src*="://"])', attrName: 'src' },  // videos
-    ];
-
     async init(presentation) {
         const config = presentation.getConfig();
         const template = presentation.template;
@@ -109,15 +101,8 @@ class GitShow {
             if (config.usePlugins) {
                 this.addPlugins(config.usePlugins);
             }
-            if (config.resolvedRelativeAssets) {
-                this.resolvedRelativeAssets.push(...config.resolvedRelativeAssets);
-            }
 
             await this.runReveal();
-
-            if (presentation.baseUrl) {
-                this.resolveRelativeAssets(presentation.baseUrl);
-            }
 
         } else {
             this.showError('Presentation config not found.');
@@ -164,6 +149,8 @@ class GitShow {
                 console.error(`Plugin '${pluginId}' not found.`);
             }
         });
+        // add baseurl plugin to resolve relative URLs as the last one
+        this.revealConfig.plugins.push(GitShowBaseurl);
     }
 
     parseTemplate(template, config) {
@@ -218,10 +205,6 @@ class GitShow {
         // use custom plugins
         if (template.usePlugins) {
             this.addPlugins(template.usePlugins);
-        }
-        // add resolved assets
-        if (template.resolvedRelativeAssets) {
-            this.resolvedRelativeAssets.push(...template.resolvedRelativeAssets);
         }
     }
 
@@ -278,27 +261,9 @@ class GitShow {
         return ret;
     }
 
-    /**
-     * Resolves the relative URLs in the specified elements and attributes with the base URL.
-     * @param {string} baseUrl 
-     */
-    resolveRelativeAssets(baseUrl) {
-        for (let spec of this.resolvedRelativeAssets) {
-            this.resolveRelativeAsset(spec.selector, spec.attrName, baseUrl);
-        }
-    }
-
-    resolveRelativeAsset(selector, attrName, baseUrl) {
-        const elements = document.querySelectorAll(selector);
-        for (let elem of elements) {
-            const src = elem.getAttribute(attrName);
-            const newSrc = `${baseUrl}${src}`;
-            elem.setAttribute(attrName, newSrc);
-        }
-    }
-
     async runReveal() {
         this.populatePlugins();
+        this.revealConfig.gitShowPresentation = this.presentation; // expose gitShowPresentation for Reveal.js plugins
         this.deck = new Reveal(this.revealConfig);
         await this.deck.initialize();
     }
