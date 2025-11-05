@@ -155,7 +155,7 @@ export class GHClient {
     }
 
     async loginWithAuthCode(code) {
-        const response = await fetch('http://gitshow.net/token/?code=' + encodeURIComponent(code), {
+        const response = await fetch('https://gitshow.net/token/gh.php?code=' + encodeURIComponent(code), {
             method: 'GET',
             headers: {
             }
@@ -230,7 +230,7 @@ export class GHClient {
         return data;
     }
 
-    async getFile(path) {
+    async getRawFile(path) {
         const url = this.fileEndpoint(path);
         const response = await fetch(url, {
             method: 'GET',
@@ -238,30 +238,20 @@ export class GHClient {
         });
         this.checkAuth(response);
         const data = await response.json();
-        const content = this.decodeBase64Text(data.content);
         return {
-            content: content,
+            content: data.content,
             sha: data.sha
         }
     }
 
-    async updateFile(path, content, sha, message) {
-        const url = this.fileEndpoint(path);
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: this.headers(),
-            body: JSON.stringify({
-                message: message,
-                content: window.btoa(content),
-                sha: sha,
-            }),
-        });
-        this.checkAuth(response);
-        if (!response.ok) {
-            throw new Error();
+    async getFile(path) {
+        let data = await this.getRawFile(path);
+        if (data.content) {
+            data.content = this.decodeBase64Text(data.content);
         }
+        return data;
     }
-    
+
     // see https://developer.mozilla.org/en-US/docs/Glossary/Base64#the_unicode_problem
     decodeBase64Text(base64) {
         const binString = window.atob(base64);
@@ -269,6 +259,23 @@ export class GHClient {
         return new TextDecoder().decode(bytes);
     }
 
+    encodeTextToBase64(text) {
+        const bytes = new TextEncoder().encode(text);
+        const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte),).join("");
+        return window.btoa(binString);
+    }
+
+    extractBase64Data(dataUrl) {
+        if (!dataUrl.startsWith("data:")) {
+            throw new Error("Invalid Data URL " + dataUrl);
+        }
+        const base64Index = dataUrl.indexOf("base64,");
+        if (base64Index === -1) {
+            throw new Error("No base64 data found in URL " + dataUrl);
+        }
+        return dataUrl.substring(base64Index + 7);
+    }
+      
     //===================================================================================
 
     /**
@@ -286,17 +293,17 @@ export class GHClient {
 
     /**
      * Creates a git blob.
-     * @param {string} content 
+     * @param {string} base64content the content to be commited in base64 format.
      * @returns The SHA of the blob.
      */
-    async createBlob(content) {
+    async createBlob(base64content) {
         const response = await fetch(this.repositoryEndpoint() + '/git/blobs', {
             method: 'POST',
             headers: this.headers({
                 'Content-Type': 'application/json',
             }),
             body: JSON.stringify({
-                content: window.btoa(content),
+                content: base64content,
                 encoding: 'base64',
             }),
         });
@@ -320,6 +327,9 @@ export class GHClient {
         });
         this.checkAuth(response);
         const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message);
+        }
         return data.sha;
     }
 
@@ -344,6 +354,9 @@ export class GHClient {
         });
         this.checkAuth(response);
         const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message);
+        }
         return data.sha;
     }
 
@@ -365,6 +378,90 @@ export class GHClient {
         if (!response.ok) {
             throw new Error();
         }
+    }
+
+    /**
+     * Commits the changed files to the current branch.
+     * @param {*} cfiles A list of changed files with the change object.
+     * @param {*} message commit message
+     */
+    async commitChanges(cfiles, message) {
+        const baseSha = await this.getHeadSha();
+        let tree = [];
+        for (let file of cfiles) {
+            console.log('Committing file:', file);
+            const change = file.changes;
+            // prepare the blob content if some content has been changed
+            let blobContent = null;
+            if (change.content) {
+                blobContent = this.encodeTextToBase64(change.content);
+            } else if (change.dataUrl) {
+                blobContent = this.extractBase64Data(change.dataUrl);
+            }
+            // deleted files
+            if (change.delete) {
+                tree.push({
+                    path: file.path,
+                    mode: '100644',
+                    type: 'blob',
+                    sha: null,
+                });
+            }
+            // renamed files
+            else if (change.name && change.path) {
+                if (blobContent) {
+                    // content also changed -- delete the old file and add the new one
+                    tree.push({
+                        path: change.origPath,
+                        mode: '100644',
+                        type: 'blob',
+                        sha: null,
+                    });
+                    tree.push({
+                        path: change.path,
+                        mode: '100644',
+                        type: 'blob',
+                        sha: await this.createBlob(blobContent),
+                    });
+                } else {
+                    // the file has been renamed but no content has changed
+                    tree.push({
+                        path: change.origPath,
+                        mode: '100644',
+                        type: 'blob',
+                        sha: null,
+                    });
+                    tree.push({
+                        path: file.path,
+                        mode: '100644',
+                        type: 'blob',
+                        sha: file.sha,
+                    });
+                }
+            }
+            // added or changed files -- text content
+            else if (blobContent) {
+                tree.push({
+                    path: file.path,
+                    mode: '100644',
+                    type: 'blob',
+                    sha: await this.createBlob(blobContent),
+                });
+            }
+        }
+        let entireTree = {
+            base_tree: baseSha,
+            tree: tree,
+        };
+        console.log('entireTree', entireTree);
+        
+        const treeSha = await this.createTree(entireTree);
+        console.log('treeSha', treeSha);
+
+        const commitSha = await this.commitTree(treeSha, message);
+        console.log('commitSha', commitSha);
+        
+        await this.updateBranch(commitSha);
     }
 
     /**
@@ -411,7 +508,7 @@ export class GHClient {
             if (file.type === 'dir') {
                 await this.recursiveCopyFolder(srcClient, path, rootSrcFolder, dstFolder, message, tree);
             } else {
-                const content = await srcClient.getFile(path);
+                const content = await srcClient.getRawFile(path); // do not decode content here
                 let dstPath = dstFolder + path.substring(rootSrcFolder.length);
                 if (this.folder && this.folder.length > 0) {
                     dstPath = this.folder + '/' + dstPath;
