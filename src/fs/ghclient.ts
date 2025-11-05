@@ -1,6 +1,11 @@
 
 const API_ROOT = 'https://api.github.com';
 
+export type RepositoryFile = {
+    content: string;
+    sha: string;
+};
+
 export class GHClient {
 
     CLIENT_ID = '5bc2aa3324e3cb27df55';
@@ -10,29 +15,31 @@ export class GHClient {
     folder = '';
     branch = '';
     defaultBranch = 'main';
-    onNotAuthorized = null;
+    onNotAuthorized: (() => void) | null = null;
+    loginStatus: any = null;
+    bearerToken: string | null = null;
 
-    setUser(username) {
+    setUser(username: string) {
         this.username = username;
     }
 
-    setRepository(repository) {
+    setRepository(repository: string) {
         this.repository = repository;
     }
 
-    setFolder(path) {
+    setFolder(path: string) {
         this.folder = this.normalizePath(path);
     }
 
-    setBranch(name) {
+    setBranch(name: string) {
         this.branch = name;
     }
 
-    async useDefaultBranch() {
+    async useDefaultBranch(): Promise<void> {
         this.branch = await this.getDefaultBranch();
     }
 
-    normalizePath(path) {
+    normalizePath(path: string): string {
         if (path && path.length > 0) {
             while (path.startsWith('/')) {
                 path = path.substring(1);
@@ -49,7 +56,7 @@ export class GHClient {
     /**
      * The URL of the source presentation on GitHub (for user reference)
      */
-    getSourceUrl() {
+    getSourceUrl(): string {
         let ret = `https://github.com/${this.username}/${this.repository}`;
         if (this.branch && this.branch !== this.defaultBranch) {
             ret += `/tree/${this.branch}`;
@@ -67,7 +74,7 @@ export class GHClient {
     /**
      * The URL of the any folder on GitHub (for user reference)
      */
-    getFolderUrl(folder) {
+    getFolderUrl(folder: string): string {
         let ret = `https://github.com/${this.username}/${this.repository}`;
         if (this.branch && this.branch !== this.defaultBranch) {
             ret += `/tree/${this.branch}`;
@@ -84,15 +91,15 @@ export class GHClient {
 
     //===================================================================================
 
-    userEndpoint(username) {
+    userEndpoint(username: string): string {
         return API_ROOT + '/users/' + username;
     }
 
-    repositoryEndpoint() {
+    repositoryEndpoint(): string {
         return API_ROOT + '/repos/' + this.username + '/' + this.repository;
     }
 
-    fileEndpoint(path) {
+    fileEndpoint(path: string): string {
         let fpath = this.folder || '';
         if (path && path.length > 0) {
             fpath = fpath + '/' + path;
@@ -106,7 +113,7 @@ export class GHClient {
 
     //===================================================================================
 
-    async getUserRepos() {
+    async getUserRepos(): Promise<any> {
         const response = await fetch(this.userEndpoint(this.username) + '/repos', {
             headers: this.headers(),
         });
@@ -116,7 +123,7 @@ export class GHClient {
 
     //===================================================================================
 
-    async fetchUser() {
+    async fetchUser(): Promise<any> {
         const response = await fetch(API_ROOT + '/user', {
             headers: this.headers(),
         });
@@ -124,15 +131,15 @@ export class GHClient {
         return data;
     }
   
-    hasToken() {
+    hasToken(): boolean {
 		return (localStorage.getItem('ghtoken') !== null);
 	}
 
-	logout() {
+	logout(): void {
 		localStorage.removeItem('ghtoken');
 	}
 
-    async getBranches() {
+    async getBranches(): Promise<any> {
         const response = await fetch(this.repositoryEndpoint() + '/branches', {
             headers: this.headers(),
         });
@@ -140,7 +147,7 @@ export class GHClient {
         return data;
     }
 
-    async getDefaultBranch() {
+    async getDefaultBranch(): Promise<string> {
         const response = await fetch(this.repositoryEndpoint(), {
             headers: this.headers(),
         });
@@ -148,13 +155,13 @@ export class GHClient {
         return data.default_branch;
     }
 
-    async login(token) {
+    async login(token: string): Promise<void> {
         localStorage.setItem('ghtoken', token);
         this.loginStatus = await this.fetchUser();
         this.saveLoginStatus();
     }
 
-    async loginWithAuthCode(code) {
+    async loginWithAuthCode(code: string): Promise<boolean> {
         const response = await fetch('https://gitshow.net/token/gh.php?code=' + encodeURIComponent(code), {
             method: 'GET',
             headers: {
@@ -164,7 +171,7 @@ export class GHClient {
         const accessToken = data.get('access_token');
         if (accessToken) {
             // Store the access token and mark the user as authenticated
-            await this.login(accessToken);
+            await this.login(accessToken as string);
             return true;
         }
         else {
@@ -172,7 +179,7 @@ export class GHClient {
         }
     }
 
-    checkAuth(response) {
+    checkAuth(response: Response): boolean {
 		if (response.status == 401 || response.status == 403) {
 			if (this.onNotAuthorized) {
 				this.onNotAuthorized();
@@ -183,7 +190,7 @@ export class GHClient {
 		}
 	}
 
-	headers(headers) {
+	headers(headers?: { [key: string]: string }): { [key: string]: string } {
 		const src = headers ? headers : {};
 		const token = localStorage.getItem('ghtoken');
 		if (token) {
@@ -196,15 +203,15 @@ export class GHClient {
 		}
 	}
 
-    saveLoginStatus() {
+    saveLoginStatus(): void {
 		window.localStorage.setItem('gitshow-login', JSON.stringify(this.loginStatus));
 	}
 
-	deleteLoginStatus() {
+	deleteLoginStatus(): void {
 		window.localStorage.removeItem('gitshow-login');
 	}
 
-	restoreLoginStatus() {
+	restoreLoginStatus(): void {
 		const data = window.localStorage.getItem('gitshow-login');
 		if (data) {
 			this.loginStatus = JSON.parse(data);
@@ -216,7 +223,7 @@ export class GHClient {
 
     //===================================================================================
 
-    async getFileList(subfolder) {
+    async getFileList(subfolder: string): Promise<any> {
         const url = this.fileEndpoint(subfolder ? subfolder : '');
         const response = await fetch(url, {
             method: 'GET',
@@ -224,13 +231,13 @@ export class GHClient {
         });
         this.checkAuth(response);
         if (response.status >= 300) {
-            throw new Error(response.statusText);
+            throw new Object({ code: response.status, message: response.statusText });
         }
         const data = await response.json();
         return data;
     }
 
-    async getRawFile(path) {
+    async getRawFile(path: string): Promise<RepositoryFile> {
         const url = this.fileEndpoint(path);
         const response = await fetch(url, {
             method: 'GET',
@@ -244,7 +251,7 @@ export class GHClient {
         }
     }
 
-    async getFile(path) {
+    async getFile(path: string): Promise<RepositoryFile> {
         let data = await this.getRawFile(path);
         if (data.content) {
             data.content = this.decodeBase64Text(data.content);
@@ -253,19 +260,19 @@ export class GHClient {
     }
 
     // see https://developer.mozilla.org/en-US/docs/Glossary/Base64#the_unicode_problem
-    decodeBase64Text(base64) {
+    decodeBase64Text(base64: string): string {
         const binString = window.atob(base64);
-        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
+        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
         return new TextDecoder().decode(bytes);
     }
 
-    encodeTextToBase64(text) {
+    encodeTextToBase64(text: string): string {
         const bytes = new TextEncoder().encode(text);
         const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte),).join("");
         return window.btoa(binString);
     }
 
-    extractBase64Data(dataUrl) {
+    extractBase64Data(dataUrl: string): string {
         if (!dataUrl.startsWith("data:")) {
             throw new Error("Invalid Data URL " + dataUrl);
         }
@@ -282,7 +289,7 @@ export class GHClient {
      * Gets the SHA of the head commit of the current branch.
      * @returns the SHA of the head commit
      */
-    async getHeadSha() {
+    async getHeadSha(): Promise<string> {
         const response = await fetch(this.repositoryEndpoint() + '/git/refs/heads/' + this.branch, {
             headers: this.headers(),
         });
@@ -296,7 +303,7 @@ export class GHClient {
      * @param {string} base64content the content to be commited in base64 format.
      * @returns The SHA of the blob.
      */
-    async createBlob(base64content) {
+    async createBlob(base64content: string): Promise<string> {
         const response = await fetch(this.repositoryEndpoint() + '/git/blobs', {
             method: 'POST',
             headers: this.headers({
@@ -317,7 +324,7 @@ export class GHClient {
      * @param {*} entireTree the tree data
      * @returns The SHA of the new tree.
      */
-    async createTree(entireTree) {
+    async createTree(entireTree: any): Promise<string> {
         const response = await fetch(this.repositoryEndpoint() + '/git/trees', {
             method: 'POST',
             headers: this.headers({
@@ -339,7 +346,7 @@ export class GHClient {
      * @param {*} message commit message
      * @returns New commit SHA.
      */
-    async commitTree(treeSha, message) {
+    async commitTree(treeSha: string, message: string): Promise<string> {
         const headSha = await this.getHeadSha();
         const response = await fetch(this.repositoryEndpoint() + '/git/commits', {
             method: 'POST',
@@ -364,7 +371,7 @@ export class GHClient {
      * Updates the current branch to the given commit.
      * @param {string} commitSha The SHA of the commit to update to.
      */
-    async updateBranch(commitSha) {
+    async updateBranch(commitSha: string): Promise<void> {
         const response = await fetch(this.repositoryEndpoint() + '/git/refs/heads/' + this.branch, {
             method: 'PATCH',
             headers: this.headers({
@@ -385,9 +392,9 @@ export class GHClient {
      * @param {*} cfiles A list of changed files with the change object.
      * @param {*} message commit message
      */
-    async commitChanges(cfiles, message) {
+    async commitChanges(cfiles: any[], message: string): Promise<void> {
         const baseSha = await this.getHeadSha();
-        let tree = [];
+        let tree: any[] = [];
         for (let file of cfiles) {
             console.log('Committing file:', file);
             const change = file.changes;
@@ -471,7 +478,7 @@ export class GHClient {
      * @param {*} targetPath Target path in this repository relative to the current folder.
      * @param {*} message Commit message.
      */
-    async copyFolder(srcClient, templatePath, targetPath, message) {
+    async copyFolder(srcClient: GHClient, templatePath: string, targetPath: string, message: string): Promise<void> {
         console.log('copyFolder', srcClient, templatePath, targetPath);
         console.log('destClient', this);
 
@@ -483,7 +490,7 @@ export class GHClient {
         console.log('srcFolder', srcFolder);
         console.log('dstFolder', dstFolder);
 
-        const tree = [];
+        const tree: any[] = [];
         await this.recursiveCopyFolder(srcClient, srcFolder, srcFolder, dstFolder, message, tree);
         let entireTree = {
             base_tree: baseSha,
@@ -500,7 +507,7 @@ export class GHClient {
         await this.updateBranch(commitSha);
     }
 
-    async recursiveCopyFolder(srcClient, srcFolder, rootSrcFolder, dstFolder, message, tree) {
+    async recursiveCopyFolder(srcClient: GHClient, srcFolder: string, rootSrcFolder: string, dstFolder: string, message: string, tree: any[]): Promise<void> {
         const files = await srcClient.getFileList(srcFolder);
         console.log('copyFolder', srcFolder, dstFolder, files);
         for (const file of files) {

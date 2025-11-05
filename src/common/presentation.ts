@@ -1,0 +1,259 @@
+
+import type { FileSet, TrackedFile } from "./fileset";
+import type { RepositoryFile } from "../fs/ghclient";
+
+export type PresentationStatus = {
+    ok: boolean;
+    code?: number;
+    message?: string;
+}
+
+interface PresentationConfig {
+    contents: string[];
+    template?: {
+        properties?: Record<string, any>;
+    };
+    [key: string]: any;
+}
+
+export class Presentation {
+    rootFolder: FileSet;
+    templateFolder: FileSet;
+    assetsFolder: FileSet;
+    config: PresentationConfig = { contents: [] };
+    template: any = {};
+    baseUrl: string | null | undefined = null;
+    status: PresentationStatus = { ok: false };
+
+    constructor(rootFolder: FileSet, templateFolder: FileSet, assetsFolder: FileSet) {
+        this.rootFolder = rootFolder;
+        this.templateFolder = templateFolder;
+        this.assetsFolder = assetsFolder;
+    }
+
+    async refreshFolder(): Promise<void> {
+        this.status = { ok: true };
+        try {
+            await this.rootFolder.refreshFolder();
+        } catch (e) {
+            let err = e as any;
+            this.status = { 
+                ok: false, 
+                code: err.code ? err.code : 404, 
+                message: `<p><span class="error"></span> Could not get the referenced repository or folder`
+            };
+        }
+        try {
+            await this.templateFolder.refreshFolder();
+        } catch (e) {
+            let err = e as any;
+            this.status = { 
+                ok: false, 
+                code: err.code ? err.code : 404, 
+                message: `<p><span class="error"></span> The template folder does not exist within the source folder or is not readable</p>`
+            };
+        }
+        try {
+            await this.assetsFolder.refreshFolder();
+        } catch (e) {
+        }
+        this.config = await this.readConfig() || { contents: [] };
+        this.template = await this.readTemplateDefinition();
+        this.baseUrl = this.detectBaseUrl();
+    }
+
+    checkPresentationHealth() {
+        // must contain presentation.json
+        const pconfig = this.getConfigFile();
+        if (!pconfig) {
+            return { ok: false, code: 'Error', message: '<p><span class="error"></span> The source folder does not contain the <code>presentation.json</code> file</p>' };
+        }
+        const tconfig = this.readTemplateDefinition();
+        if (!tconfig) {
+            return { ok: false, code: 'Error', message: '<p><span class="error"></span> The source folder does not contain the <code>template/template.json</code> file</p>' };
+        }
+        // TODO check template and contents
+        // all ok
+        return  { ok: true, message: 'Presentation ok' }
+    }
+
+    getConfigFile(): TrackedFile | null {
+        return this.rootFolder.getFileData('presentation.json');
+    }
+
+    detectBaseUrl(): string | undefined {
+        const configFile = this.getConfigFile();
+        if (configFile) {
+            const url = (configFile as any).download_url;
+            if (url) {
+                return url.substring(0, url.length - 'presentation.json'.length);
+            }
+        }
+        return undefined;
+    }
+
+    async readConfig(): Promise<PresentationConfig | null> {
+        const configFile = this.getConfigFile();
+        if (configFile) {
+            const configData = await this.rootFolder.readFile(configFile.name)
+            if (configData && configData.content) {
+                configFile.content = configData.content;
+                configFile.origContent = configData.content;
+                (configFile as any).isConfig = true; // mark configuration file
+                return JSON.parse(configData.content);
+            } else {
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
+
+    getConfig(): PresentationConfig {
+        return this.config;
+    }
+
+    getContentFiles(): TrackedFile[] {
+        let ret: TrackedFile[] = [];
+        for (let fname of this.config.contents) {
+            const file = this.rootFolder.getFileData(fname);
+            if (file) {
+                ret.push(file);
+            } else {
+                // file does not exist, create a new one in the root folder
+                const newFile: Partial<TrackedFile> = { name: fname, content: '', size: 0, sha: null };
+                this.rootFolder.addFile(newFile);
+                ret.push(newFile as TrackedFile);
+            }
+        }
+        return ret;
+    }
+
+    addContentFile(fname: string, index?: number): void {
+        if (typeof index === 'undefined') {
+            this.config.contents.push(fname);
+        } else {
+            this.config.contents.splice(index, 0, fname);
+        }
+        this.updateConfigFile();
+    }
+
+    renameContentFile(oldName: string, newName: string): void {
+        for (let i = 0; i < this.config.contents.length; i++) {
+            if (this.config.contents[i] === oldName) {
+                this.config.contents[i] = newName;
+                this.updateConfigFile();
+                break;
+            }
+        }
+    }
+
+    /**
+     * Moves the content file from one position in the list to another.
+     * @param {number} fromIndex
+     * @param {number} toIndex 
+     */
+    reorderContentFile(oldIndex: number, newIndex: number): void {
+        if (oldIndex!== newIndex) {
+            this.config.contents.splice(newIndex, 0, this.config.contents.splice(oldIndex, 1)[0]);
+            this.updateConfigFile();
+        }
+    }
+
+    removeContentFile(fname: string): void {
+        for (let i = 0; i < this.config.contents.length; i++) {
+            if (this.config.contents[i] === fname) {
+                this.config.contents.splice(i, 1);
+                this.updateConfigFile();
+                break;
+            }
+        }
+    }
+
+    getConfigFileContent(): string {
+        // create a copy of config while excluding deleted files from config.contents
+        const configCopy = { ...this.config };
+        const newContents: string[] = [];
+        for (let fname of configCopy.contents) {
+            const file = this.rootFolder.getFileData(fname);
+            if (file && !file.delete) {
+                newContents.push(file.name);
+            }
+        }
+        configCopy.contents = newContents;
+        // serialize the config and return
+        return JSON.stringify(configCopy, null, 4);
+    }
+
+    /**
+     * Update the config file with the updated content.
+     */
+    updateConfigFile(): void {
+        const configFile = this.getConfigFile();
+        if (configFile) {
+            configFile.content = this.getConfigFileContent();
+        }
+    }
+
+    isConfigModified(): boolean {
+        const configFile = this.getConfigFile();
+        if (configFile) {
+            return this.rootFolder.isFileModified(configFile);
+        }
+        return false;
+    }
+
+    async readContentFile(fname: string): Promise<RepositoryFile> {
+        return await this.rootFolder.readFile(fname);
+    }
+
+    async getMarkdownContent(): Promise<RepositoryFile[]> {
+        let ret: RepositoryFile[] = [];
+        for (let fname of this.config.contents) {
+            const file = await this.readContentFile(fname);
+            ret.push(file);
+        }
+        return ret;
+    }
+
+    // ===========================================================================================
+
+    async readTemplateDefinition(): Promise<any> {
+        const data = await this.templateFolder.readFile('template.json');
+        if (data && data.content) {
+            let ret = JSON.parse(data.content);
+            if (this.config.template?.properties) {
+                ret = this.replacePlaceholders(ret, this.config.template.properties);
+            }
+            return ret;
+        } else {
+            return null;
+        }
+    }
+
+    replacePlaceholders(template: any, properties: Record<string, any>): any {
+        if (typeof template === 'string') {
+            let exactMatch = template.match(/^\${(.*?)}$/);
+            if (exactMatch) { // exact match - return the property value
+                return properties[exactMatch[1]] || exactMatch[0];
+            } else { // replace in a string
+                return template.replace(/\${(.*?)}/g, (match, propertyName) => {
+                    return properties[propertyName] || match;
+                });
+            }
+        } else if (Array.isArray(template)) {
+            return template.map(item => this.replacePlaceholders(item, properties));
+        } else if (typeof template === 'object' && template !== null) {
+            const result: { [key: string]: string } = {};
+            for (const key in template) {
+                if (Object.hasOwnProperty.call(template, key)) {
+                    result[key] = this.replacePlaceholders(template[key], properties);
+                }
+            }
+            return result;
+        } else {
+            return template;
+        }
+    }
+
+}
