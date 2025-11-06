@@ -4,7 +4,7 @@ import type { RepositoryFile } from "../fs/ghclient";
 
 export type PresentationStatus = {
     ok: boolean;
-    code?: number;
+    code?: string;
     message?: string;
 }
 
@@ -22,7 +22,7 @@ export class Presentation {
     assetsFolder: FileSet;
     config: PresentationConfig = { contents: [] };
     template: any = {};
-    baseUrl: string | null | undefined = null;
+    baseUrl: string | null = null;
     status: PresentationStatus = { ok: false };
 
     constructor(rootFolder: FileSet, templateFolder: FileSet, assetsFolder: FileSet) {
@@ -32,7 +32,9 @@ export class Presentation {
     }
 
     async refreshFolder(): Promise<void> {
-        this.status = { ok: true };
+        this.status = { ok: true, message: 'Presentation ok' };
+
+        // Refresh root folder contents
         try {
             await this.rootFolder.refreshFolder();
         } catch (e) {
@@ -40,9 +42,12 @@ export class Presentation {
             this.status = { 
                 ok: false, 
                 code: err.code ? err.code : 404, 
-                message: `<p><span class="error"></span> Could not get the referenced repository or folder`
+                message: `<p><span class="error"></span> Could not read the referenced repository or folder</p>`
             };
+            return; // Root folder not found, no presentation to load
         }
+
+        // Refresh template folder contents
         try {
             await this.templateFolder.refreshFolder();
         } catch (e) {
@@ -52,36 +57,47 @@ export class Presentation {
                 code: err.code ? err.code : 404, 
                 message: `<p><span class="error"></span> The template folder does not exist within the source folder or is not readable</p>`
             };
+            return; // Template folder not found, no presentation to load
         }
+
+        // Refresh assets folder contents (optional)    
         try {
             await this.assetsFolder.refreshFolder();
         } catch (e) {
         }
-        this.config = await this.readConfig() || { contents: [] };
-        this.template = await this.readTemplateDefinition();
-        this.baseUrl = this.detectBaseUrl();
-    }
 
-    checkPresentationHealth() {
-        // must contain presentation.json
-        const pconfig = this.getConfigFile();
-        if (!pconfig) {
-            return { ok: false, code: 'Error', message: '<p><span class="error"></span> The source folder does not contain the <code>presentation.json</code> file</p>' };
+        // Everything fine, check status
+        if (this.status.ok) {
+            // check and read the config file presentation.json
+            const pconfig = this.getConfigFile();
+            if (pconfig) {
+                this.config = await this.readConfig() || { contents: [] };
+            } else {
+                this.status = { 
+                    ok: false, 
+                    code: 'Error',
+                    message: '<p><span class="error"></span> The source folder does not contain the <code>presentation.json</code> file</p>' 
+                };
+            }
+
+            // check and read the template definition template/template.json
+            this.template = await this.readTemplateDefinition();
+            if (!this.template) {
+                this.status = { 
+                    ok: false, code: 'Error',
+                    message: '<p><span class="error"></span> The source folder does not contain the <code>template/template.json</code> file</p>' 
+                };
+            }
+
+            this.baseUrl = this.detectBaseUrl();
         }
-        const tconfig = this.readTemplateDefinition();
-        if (!tconfig) {
-            return { ok: false, code: 'Error', message: '<p><span class="error"></span> The source folder does not contain the <code>template/template.json</code> file</p>' };
-        }
-        // TODO check template and contents
-        // all ok
-        return  { ok: true, message: 'Presentation ok' }
     }
 
     getConfigFile(): TrackedFile | null {
         return this.rootFolder.getFileData('presentation.json');
     }
 
-    detectBaseUrl(): string | undefined {
+    detectBaseUrl(): string | null {
         const configFile = this.getConfigFile();
         if (configFile) {
             const url = (configFile as any).download_url;
@@ -89,7 +105,7 @@ export class Presentation {
                 return url.substring(0, url.length - 'presentation.json'.length);
             }
         }
-        return undefined;
+        return null;
     }
 
     async readConfig(): Promise<PresentationConfig | null> {

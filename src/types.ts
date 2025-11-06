@@ -7,6 +7,6 @@ export type Coordinates = {
 }
 
 export type MessageCode = {
-    code?: number;
+    code?: string;
     message?: string;
 }

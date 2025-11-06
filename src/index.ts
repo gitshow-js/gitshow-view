@@ -1,3 +1,4 @@
+
 import Reveal from 'reveal.js';
 import RevealMarkdown from 'reveal.js/plugin/markdown/markdown.esm.js';
 import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
@@ -15,22 +16,23 @@ import GitShowLayout from "./plugin/layout/plugin.js";
 
 // this should be the last one, it resolves the relative URLs including those produced by other plugins
 import GitShowBaseurl from './plugin/baseurl/plugin.js';
+import { Presentation } from './common/presentation.js';
 
 
-class GitShow {
+export default class GitShow {
 
-    presentation = null;
-    presentationConfig = {};
-    template = null;
-    main = null;
-    deck = null;
+    presentation: Presentation | null = null;
+    presentationConfig: any = {};
+    template: any = null;
+    main: HTMLElement | null = null;
+    deck: Reveal.Api | null = null;
 
     /*
         Required plugins can be configured for each template in the template.json file or directly
         in the presentation.json file using the usePlugins array. The default plugins are configured
         below.
     */
-    availablePlugins = [
+    availablePlugins: any[] = [
         // built-in plugins
         RevealMarkdown,
         RevealHighlight,
@@ -47,8 +49,8 @@ class GitShow {
         GitShowMonaco,
         GitShowLayout
     ];
-    availablePluginMap = {};
-    usedPlugins = ['markdown', 'highlight', 'notes', 'zoom']; // default selection
+    availablePluginMap: Record<string, any> = {};
+    usedPlugins: string[] = ['markdown', 'highlight', 'notes', 'zoom']; // default selection
 
     /*
         Reveal.js configuration is taken from the following sources (in the following order)
@@ -56,7 +58,7 @@ class GitShow {
         2. Each template can update the config via updateRevealConfig()
         3. The presentation may upadte the config in the 'reveal' section of presentation.json.
     */
-    revealConfig = {
+    revealConfig: any = {
         width: 1920,
         height: 1080,
         margin: 0,
@@ -69,7 +71,7 @@ class GitShow {
         plugins: [], // to be filled after all config files are loaded
     };
 
-    async init(presentation) {
+    async init(presentation: Presentation) {
         const config = presentation.getConfig();
         const template = presentation.template;
         this.presentationConfig = config;
@@ -109,7 +111,7 @@ class GitShow {
         }
     }
 
-    showTitle(title) {
+    showTitle(title: string) {
         document.title = title;
     }
 
@@ -124,7 +126,7 @@ class GitShow {
      * Adds specified plugins to the list of used plugins.
      * @param {*} pluginIds 
      */
-    addPlugins(pluginIds) {
+    addPlugins(pluginIds: string[]) {
         for (const pluginId of pluginIds) {
             if (this.availablePluginMap[pluginId]) {
                 if (!this.usedPlugins.includes(pluginId)) {
@@ -153,14 +155,14 @@ class GitShow {
         this.revealConfig.plugins.push(GitShowBaseurl);
     }
 
-    parseTemplate(template, config) {
+    parseTemplate(template: string, config: any) {
         if (config.template?.properties) {
             template = this.replacePlaceholders(template, config.template.properties);
         }
         return template;
     }
 
-    replacePlaceholders(template, properties) {
+    replacePlaceholders(template: any, properties: any): any {
         if (typeof template === 'string') {
             let exactMatch = template.match(/\${(.*?)}/);
             if (exactMatch) { // exact match - return the property value
@@ -173,7 +175,7 @@ class GitShow {
         } else if (Array.isArray(template)) {
             return template.map(item => this.replacePlaceholders(item, properties));
         } else if (typeof template === 'object' && template !== null) {
-            const result = {};
+            const result: any = {};
             for (const key in template) {
                 if (template.hasOwnProperty(key)) {
                     result[key] = this.replacePlaceholders(template[key], properties);
@@ -185,7 +187,7 @@ class GitShow {
         }
     }
 
-    useTemplate(template) {
+    useTemplate(template: any) {
         console.log("USE");
         console.log(template);
         // use base CSS
@@ -195,7 +197,7 @@ class GitShow {
         // use custom styles
         if (template.styles) {
             for (let sname of template.styles) {
-                this.importStyle('template/' + sname);
+                this.importStyle(sname);
             }
         }
         // update reveal config
@@ -216,11 +218,11 @@ class GitShow {
         return this.revealConfig;
     }
 
-    updateRevealConfig(newConfig) {
+    updateRevealConfig(newConfig: any) {
         this.revealConfig = { ...this.revealConfig, ...newConfig };
     }
 
-    addStyle(path) {
+    addStyle(path: string) {
         const head = document.head || document.getElementsByTagName('head')[0];
         const link = document.createElement('link');
         link.setAttribute('rel', 'stylesheet');
@@ -228,12 +230,12 @@ class GitShow {
         head.appendChild(link);
     }
 
-    async importStyle(path) {
-        let css = await this.presentation.readFile(path);
+    async importStyle(path: string) {
+        let css = await this.presentation!.templateFolder.readFile(path);
         if (css) {
             let cssdef = css.content;
-            if (this.presentation.baseUrl) {
-                cssdef = this.replaceUrlsWithBase(css.content, this.presentation.baseUrl);
+            if (this.presentation!.baseUrl) {
+                cssdef = this.replaceUrlsWithBase(css.content, this.presentation!.baseUrl);
             }
             const head = document.head || document.getElementsByTagName('head')[0];
             const style = document.createElement('style');
@@ -248,7 +250,7 @@ class GitShow {
     /**
      * Replaces URLs in a CSS style sheets with the base URL.
      */
-    replaceUrlsWithBase(cssString, baseUrl) {
+    replaceUrlsWithBase(cssString: string, baseUrl: string) {
         const urlRegex = /url\(['"]?([^'"]+)['"]?\)/g;
         const ret = cssString.replace(urlRegex, (match, url) => {
             // Check if the URL is absolute, if so, don't modify it
@@ -272,18 +274,18 @@ class GitShow {
      * Creates the content sections by inserting links to markdown filed in the git repo.
      * @param {*} contents 
      */
-    async createContentLinks(contents) {
+    async createContentLinks(contents: string[]) {
         const defaultClass = this.template.defaultClass || 'normal';
-        this.main.innerHTML = '';
+        this.main!.innerHTML = '';
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
-        this.main.appendChild(reveal);
+        this.main!.appendChild(reveal);
         const slides = document.createElement('div');
         slides.setAttribute('class', 'slides');
         reveal.appendChild(slides);
 
         for (let cont of contents) {
-            const fileUrl = this.presentation.baseUrl + '/' + cont;
+            const fileUrl = this.presentation!.baseUrl + '/' + cont;
             const slide = document.createElement('section');
             slide.setAttribute('class', defaultClass);
             slide.setAttribute('data-markdown', fileUrl);
@@ -297,18 +299,18 @@ class GitShow {
      * Creates the content sections by fetching and inserting markdown code inline.
      * @param {*} contents 
      */
-    async createContentInline(contents) {
+    async createContentInline(contents: string[]) {
         const defaultClass = this.template.defaultClass || 'normal';
-        this.main.innerHTML = '';
+        this.main!.innerHTML = '';
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
-        this.main.appendChild(reveal);
+        this.main!.appendChild(reveal);
         const slides = document.createElement('div');
         slides.setAttribute('class', 'slides');
         reveal.appendChild(slides);
 
         for (let cont of contents) {
-            let fileData = this.presentation.getFileData(cont);
+            let fileData = this.presentation!.rootFolder.getFileData(cont);
             if (fileData) {
                 const slide = document.createElement('section');
                 slide.setAttribute('class', defaultClass);
@@ -317,17 +319,15 @@ class GitShow {
                 slide.setAttribute('data-separator-vertical', '^=--');
                 //slide.innerHTML = '# Ahoj\nNazdar';
                 slides.appendChild(slide);
-                let md = await this.presentation.readFile(cont);
+                let md = await this.presentation!.rootFolder.readFile(cont);
                 let inslide = `<textarea data-template>${md.content}</textarea>`;
                 slide.innerHTML = inslide;
             }
         }
     }
 
-    showError(msg) {
-        this.main.innerHTML = '<strong>Error:</strong> ' + msg;
+    showError(msg: string) {
+        this.main!.innerHTML = '<strong>Error:</strong> ' + msg;
     }
 
 }
-
-export default GitShow;
