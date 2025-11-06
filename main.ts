@@ -6,6 +6,7 @@ import './style.css';
 import GitShow from './src/index.js';
 import type { ApiClient } from './src/fs/apiclient.ts';
 import { GHClient } from './src/fs/gh/ghclient.ts'
+import { HTTPClient } from './src/fs/http/httpclient.ts';
 import { Presentation } from './src/common/presentation.ts';
 
 import type { Coordinates, MessageCode } from './src/types.js';
@@ -48,38 +49,53 @@ function authFailed() {
     console.log('AUTH FAILED');
 }
 
-async function createApiClient(service: string, user: string, repo: string, branch: string | null, folders?: string[]): Promise<GHClient | null> {
+async function createHTTPClient(proto: string, hostname: string, folders?: string[]): Promise<HTTPClient> {
+    let baseUrl = `${proto}://${hostname}`;
+    if (folders) {
+        baseUrl += '/' + folders.join('/');
+    }
+    return new HTTPClient(baseUrl);
+}
+
+async function createGHClient(user: string, repo: string, branch: string | null, folders?: string[]): Promise<GHClient> {
     let path = '';
     if (folders) {
         path = folders.join('/');
     }
-    if (service === 'gh') {
-        let apiClient = new GHClient();
-        apiClient.setUser(user);
-        apiClient.setRepository(repo);
-        apiClient.setFolder(path);
-        if (branch) {
-            apiClient.setBranch(branch);
-        } else {
-            await apiClient.useDefaultBranch();
-        }
-        apiClient.onNotAuthorized = authFailed;
-        return apiClient;
+
+    let apiClient = new GHClient();
+    apiClient.setUser(user);
+    apiClient.setRepository(repo);
+    apiClient.setFolder(path);
+    if (branch) {
+        apiClient.setBranch(branch);
     } else {
-        console.error('Unsupported service ' + service);
-        return null;
+        await apiClient.useDefaultBranch();
     }
+    apiClient.onNotAuthorized = authFailed;
+    return apiClient;
 }
 
 function sanitizeName(inputString: string): string {
     return inputString.replace(/[^a-zA-Z0-9-_]/g, '');
 }
 
+function sanitizeHostname(inputString: string): string {
+    return inputString.replace(/[^a-zA-Z0-9-\.]/g, '_');
+}
+
 async function startPresentation(path: string): Promise<void> {
     setMode('start');
     let pdata = path.split('/');
     pdata.shift(); //the leading '/' in the path
-    if (pdata.length >= 3) {
+
+    if (pdata.length >= 2 && (pdata[0] === 'http' || pdata[0] === 'https')) {
+        const proto = pdata[0];
+        const hostname = sanitizeHostname(pdata[1]);
+        const folders = pdata.slice(2);
+
+        apiClient = await createHTTPClient(proto, hostname, folders);
+    } else if (pdata.length >= 3 && pdata[0] === 'gh') {
         const service = pdata[0];
         const user = sanitizeName(pdata[1]);
         let branch = null;
@@ -94,8 +110,9 @@ async function startPresentation(path: string): Promise<void> {
             repo = sanitizeName(repo);
         }
 
-        apiClient = await createApiClient(service, user, repo, branch, folders);
+        apiClient = await createGHClient(user, repo, branch, folders);
     }
+
     if (apiClient) {
         setMode('start loading');
         showMessage("Presentation loading...");
