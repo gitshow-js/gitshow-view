@@ -231,7 +231,12 @@ export class GHClient {
         });
         this.checkAuth(response);
         if (response.status >= 300) {
-            throw new Object({ code: response.status, message: response.statusText });
+            let errorData: any = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+            }
+            throw new Object({ code: response.status, message: errorData.message || '' });
         }
         const data = await response.json();
         return data;

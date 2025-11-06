@@ -39,11 +39,7 @@ export class Presentation {
             await this.rootFolder.refreshFolder();
         } catch (e) {
             let err = e as any;
-            this.status = { 
-                ok: false, 
-                code: err.code ? err.code : 404, 
-                message: `<p><span class="error"></span> Could not read the referenced repository or folder</p>`
-            };
+            this.status = this.errorStatus(err, 'Could not read the referenced repository or folder');
             return; // Root folder not found, no presentation to load
         }
 
@@ -52,11 +48,7 @@ export class Presentation {
             await this.templateFolder.refreshFolder();
         } catch (e) {
             let err = e as any;
-            this.status = { 
-                ok: false, 
-                code: err.code ? err.code : 404, 
-                message: `<p><span class="error"></span> The template folder does not exist within the source folder or is not readable</p>`
-            };
+            this.status = this.errorStatus(err, 'The template folder does not exist within the source folder or is not readable');
             return; // Template folder not found, no presentation to load
         }
 
@@ -76,7 +68,7 @@ export class Presentation {
                 this.status = { 
                     ok: false, 
                     code: 'Error',
-                    message: '<p><span class="error"></span> The source folder does not contain the <code>presentation.json</code> file</p>' 
+                    message: 'The source folder does not contain the <code>presentation.json</code> file' 
                 };
             }
 
@@ -91,6 +83,18 @@ export class Presentation {
 
             this.baseUrl = this.detectBaseUrl();
         }
+    }
+
+    errorStatus(err: any, messagePrefix: string): PresentationStatus {
+        let msg = messagePrefix;
+        if (err.message) {
+            msg += ': '+ err.message;
+        }
+        return { 
+            ok: false, 
+            code: err.code ? err.code : 404, 
+            message: msg
+        };
     }
 
     getConfigFile(): TrackedFile | null {
