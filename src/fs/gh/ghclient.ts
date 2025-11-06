@@ -1,12 +1,14 @@
+import type { ApiClient, FileSet } from "../apiclient";
+import { GHFileSet } from "./ghfileset";
 
 const API_ROOT = 'https://api.github.com';
 
-export type RepositoryFile = {
+export type GHContentFile = {
     content: string;
     sha: string;
 };
 
-export class GHClient {
+export class GHClient implements ApiClient {
 
     CLIENT_ID = '5bc2aa3324e3cb27df55';
 
@@ -109,6 +111,12 @@ export class GHClient {
             rpath = rpath + '/' + fpath;
         }
         return this.repositoryEndpoint() + rpath + '?ref=' + this.branch;
+    }
+
+    //===================================================================================
+
+    createFileSet(folder: string): FileSet {
+        return new GHFileSet(this, folder);
     }
 
     //===================================================================================
@@ -242,7 +250,7 @@ export class GHClient {
         return data;
     }
 
-    async getRawFile(path: string): Promise<RepositoryFile> {
+    async getRawFile(path: string): Promise<GHContentFile> {
         const url = this.fileEndpoint(path);
         const response = await fetch(url, {
             method: 'GET',
@@ -256,7 +264,7 @@ export class GHClient {
         }
     }
 
-    async getFile(path: string): Promise<RepositoryFile> {
+    async getFile(path: string): Promise<GHContentFile> {
         let data = await this.getRawFile(path);
         if (data.content) {
             data.content = this.decodeBase64Text(data.content);

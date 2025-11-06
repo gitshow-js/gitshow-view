@@ -1,6 +1,5 @@
+import type { ContentFile, FileSet, TrackedFile } from "../fs/apiclient";
 
-import type { FileSet, TrackedFile } from "./fileset";
-import type { RepositoryFile } from "../fs/ghclient";
 
 export type PresentationStatus = {
     ok: boolean;
@@ -141,7 +140,7 @@ export class Presentation {
                 ret.push(file);
             } else {
                 // file does not exist, create a new one in the root folder
-                const newFile: Partial<TrackedFile> = { name: fname, content: '', size: 0, sha: null };
+                const newFile = this.rootFolder.createTrackedFile(fname);
                 this.rootFolder.addFile(newFile);
                 ret.push(newFile as TrackedFile);
             }
@@ -223,12 +222,12 @@ export class Presentation {
         return false;
     }
 
-    async readContentFile(fname: string): Promise<RepositoryFile> {
+    async readContentFile(fname: string): Promise<ContentFile> {
         return await this.rootFolder.readFile(fname);
     }
 
-    async getMarkdownContent(): Promise<RepositoryFile[]> {
-        let ret: RepositoryFile[] = [];
+    async getMarkdownContent(): Promise<ContentFile[]> {
+        let ret: ContentFile[] = [];
         for (let fname of this.config.contents) {
             const file = await this.readContentFile(fname);
             ret.push(file);

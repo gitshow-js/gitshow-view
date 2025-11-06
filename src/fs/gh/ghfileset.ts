@@ -1,8 +1,9 @@
 
-import type { GHClient, RepositoryFile } from "../fs/ghclient";
+import type { FileSet, TrackedFile } from "../apiclient";
+import type { GHClient, GHContentFile } from "./ghclient";
 
 // Define a type for the file objects used in this class
-export type TrackedFile = {
+export type GHTrackedFile = {
     name: string;
     path: string;
     sha: string | null;
@@ -20,12 +21,12 @@ export type TrackedFile = {
 /**
  * A set of files where changes are tracked
  */
-export class FileSet {
+export class GHFileSet implements FileSet {
 
     apiClient: GHClient;
     folder: string;  // the folder where the files are tracked
-    fileData: TrackedFile[] = []; 
-    origFiles: { [sha: string]: TrackedFile } = {}; 
+    fileData: GHTrackedFile[] = []; 
+    origFiles: { [sha: string]: GHTrackedFile } = {}; 
 
     constructor(apiClient: GHClient, folder: string) {
         this.apiClient = apiClient;
@@ -54,11 +55,11 @@ export class FileSet {
         return this;
     }
 
-    getFiles(): TrackedFile[] {
+    getFiles(): GHTrackedFile[] {
         return this.fileData;
     }
 
-    getFileData(name: string): TrackedFile | null {
+    getFileData(name: string): GHTrackedFile | null {
         for (let file of this.fileData) {
             if (file.name === name) {
                 return file;
@@ -67,7 +68,7 @@ export class FileSet {
         return null;
     }
 
-    indexOfFile(file: TrackedFile): number {
+    indexOfFile(file: GHTrackedFile): number {
         for (let i = 0; i < this.fileData.length; i++) {
             if (this.fileData[i].name === file.name) {
                 return i;
@@ -76,23 +77,23 @@ export class FileSet {
         return -1;
     }
 
-    replaceFileData(file: TrackedFile): void {
+    replaceFileData(file: GHTrackedFile): void {
         const index = this.indexOfFile(file);
         if (index!== -1) {
             this.fileData[index] = file;
         }
     }
 
-    async readFile(fname: string): Promise<RepositoryFile> {
+    async readFile(fname: string): Promise<GHContentFile> {
         const path = (this.folder.length > 0) ? this.folder + '/' + fname : fname;
         return await this.apiClient.getFile(path);
     }
     
-    isFileModified(file: TrackedFile): boolean {
+    isFileModified(file: GHTrackedFile): boolean {
         return (this.getChanges(file) !== null);
     }
 
-    getChanges(file: TrackedFile): any | null {
+    getChanges(file: GHTrackedFile): any | null {
         let curChange: any = { file: file };
         let changed = false;
         // if origContent is available, compare with the current content
@@ -147,7 +148,7 @@ export class FileSet {
      * 
      * @param {File} file - the file to be updated with the changes
      */
-    applyChanges(file: TrackedFile): void {
+    applyChanges(file: GHTrackedFile): void {
         if (file.delete) {
             // delete the file from the file set
             const index = this.indexOfFile(file);
@@ -202,12 +203,23 @@ export class FileSet {
         return prefix + folder;
     }
 
+    createTrackedFile(fname: string): TrackedFile {
+        let newFile: TrackedFile = { 
+            name: fname,
+            content: '',
+            path: this.getFolderPath() + '/' + fname,
+            size: 0, 
+            sha: null
+        };
+        return newFile;
+    }
+
     /**
      * Adds a new file to the file set.
      * 
-     * @param {*} newFile the file to be added containing at least the name property.
+     * @param newFile the file to be added containing at least the name property.
      */
-    addFile(newFile: any): void {
+    addFile(newFile: GHTrackedFile): void {
         this.fileData.push(newFile);
         newFile.path = this.getFolderPath() + '/' + newFile.name;
         newFile.create = true;

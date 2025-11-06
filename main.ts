@@ -4,13 +4,13 @@ import 'reveal.js/dist/theme/white.css';
 import './style.css';
 
 import GitShow from './src/index.js';
-import { GHClient } from './src/fs/ghclient.ts'
+import type { ApiClient } from './src/fs/apiclient.ts';
+import { GHClient } from './src/fs/gh/ghclient.ts'
 import { Presentation } from './src/common/presentation.ts';
 
 import type { Coordinates, MessageCode } from './src/types.js';
-import { FileSet } from './src/common/fileset.ts';
 
-let apiClient: GHClient | null = null;
+let apiClient: ApiClient | null = null;
 
 function setMode(mode: string) {
     const el = document.getElementById('gitshow-welcome');
@@ -100,9 +100,9 @@ async function startPresentation(path: string): Promise<void> {
         setMode('start loading');
         showMessage("Presentation loading...");
 
-        const rFolder = new FileSet(apiClient, '');
-        const tFolder = new FileSet(apiClient, 'template');
-        const aFolder = new FileSet(apiClient, 'assets');
+        const rFolder = apiClient.createFileSet('');
+        const tFolder = apiClient.createFileSet('template');
+        const aFolder = apiClient.createFileSet('assets');
         let presentation = new Presentation(rFolder, tFolder, aFolder);
         await presentation.refreshFolder();
         if (presentation.status.ok) {
