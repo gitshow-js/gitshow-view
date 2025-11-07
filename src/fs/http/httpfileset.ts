@@ -19,13 +19,34 @@ export class HTTPFileSet implements FileSet {
         return Promise.resolve();
     }
 
-    getFileData(name: string): TrackedFile | null {
-        return this.files.find(f => f.name === name) || null;
+    async getFileData(name: string): Promise<TrackedFile | null> {
+        let fdata = this.files.find(f => f.name === name);
+        if (fdata) {
+            return fdata;
+        } else {
+            // The file is not yet in the file set, so we try to fetch it from the server
+            // and create a new TrackedFile with the fetched content
+            try {
+                const content = await this.fetchFile(name);
+                const path = this.filePath(name);
+                const download_url = this.fileURL(path);
+                let newdata: TrackedFile = { 
+                    name,
+                    path,
+                    download_url,
+                    content
+                };
+                this.files.push(newdata);
+                return newdata;
+            } catch (error) {
+                return null;
+            }
+        }
     }
 
     async readFile(fname: string): Promise<ContentFile> {
-        const path = this.folder ? `${this.folder}/${fname}` : fname;
-        const content = await this.apiClient.fetchFile(path);
+        const path = this.filePath(fname);
+        const content = await this.fetchFile(path);
         return { content };
     }
 
@@ -41,8 +62,25 @@ export class HTTPFileSet implements FileSet {
         }
     }
 
-    isFileModified(file: TrackedFile): boolean {
-        // A simple HTTP file set is read-only, so files are never modified.
+    isFileModified(_file: TrackedFile): boolean {
         return false;
     }
+
+    filePath(name: string): string {
+        return this.folder ? `${this.folder}/${name}` : name;
+    }
+
+    fileURL(path: string): string {
+        return new URL(path, this.apiClient.baseUrl).toString();
+    }
+
+    async fetchFile(path: string): Promise<string> {
+        const url = this.fileURL(path);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.text();
+    }
+
 }

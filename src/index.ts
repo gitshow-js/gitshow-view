@@ -310,7 +310,7 @@ export default class GitShow {
         reveal.appendChild(slides);
 
         for (let cont of contents) {
-            let fileData = this.presentation!.rootFolder.getFileData(cont);
+            let fileData = await this.presentation!.rootFolder.getFileData(cont);
             if (fileData) {
                 const slide = document.createElement('section');
                 slide.setAttribute('class', defaultClass);

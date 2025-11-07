@@ -2,7 +2,6 @@
 import type { FileSet, TrackedFile } from "../apiclient";
 import type { GHClient, GHContentFile } from "./ghclient";
 
-// Define a type for the file objects used in this class
 export type GHTrackedFile = {
     name: string;
     path: string;
@@ -10,6 +9,7 @@ export type GHTrackedFile = {
     size: number;
     type: 'file' | 'dir';
     content?: string;
+    download_url?: string; // provided by the GitHub API
     origContent?: string;
     dataUrl?: string;
     delete?: boolean;
@@ -59,7 +59,7 @@ export class GHFileSet implements FileSet {
         return this.fileData;
     }
 
-    getFileData(name: string): GHTrackedFile | null {
+    async getFileData(name: string): Promise<GHTrackedFile | null> {
         for (let file of this.fileData) {
             if (file.name === name) {
                 return file;

@@ -57,10 +57,10 @@ export class Presentation {
         } catch (e) {
         }
 
-        // Everything fine, check status
+        // Folders are fine, check presentation status
         if (this.status.ok) {
             // check and read the config file presentation.json
-            const pconfig = this.getConfigFile();
+            const pconfig = await this.getConfigFile();
             if (pconfig) {
                 this.config = await this.readConfig() || { contents: [] };
             } else {
@@ -69,6 +69,7 @@ export class Presentation {
                     code: 'Error',
                     message: 'The source folder does not contain the <code>presentation.json</code> file' 
                 };
+                return; // No config file found
             }
 
             // check and read the template definition template/template.json
@@ -80,7 +81,7 @@ export class Presentation {
                 };
             }
 
-            this.baseUrl = this.detectBaseUrl();
+            this.baseUrl = await this.detectBaseUrl();
         }
     }
 
@@ -96,14 +97,14 @@ export class Presentation {
         };
     }
 
-    getConfigFile(): TrackedFile | null {
-        return this.rootFolder.getFileData('presentation.json');
+    async getConfigFile(): Promise<TrackedFile | null> {
+        return await this.rootFolder.getFileData('presentation.json');
     }
 
-    detectBaseUrl(): string | null {
-        const configFile = this.getConfigFile();
+    async detectBaseUrl(): Promise<string | null> {
+        const configFile = await this.getConfigFile();
         if (configFile) {
-            const url = (configFile as any).download_url;
+            const url = configFile.download_url;
             if (url) {
                 return url.substring(0, url.length - 'presentation.json'.length);
             }
@@ -112,7 +113,7 @@ export class Presentation {
     }
 
     async readConfig(): Promise<PresentationConfig | null> {
-        const configFile = this.getConfigFile();
+        const configFile = await this.getConfigFile();
         if (configFile) {
             const configData = await this.rootFolder.readFile(configFile.name)
             if (configData && configData.content) {
@@ -132,10 +133,10 @@ export class Presentation {
         return this.config;
     }
 
-    getContentFiles(): TrackedFile[] {
+    async getContentFiles(): Promise<TrackedFile[]> {
         let ret: TrackedFile[] = [];
         for (let fname of this.config.contents) {
-            const file = this.rootFolder.getFileData(fname);
+            const file = await this.rootFolder.getFileData(fname);
             if (file) {
                 ret.push(file);
             } else {
@@ -189,12 +190,12 @@ export class Presentation {
         }
     }
 
-    getConfigFileContent(): string {
+    async getConfigFileContent(): Promise<string> {
         // create a copy of config while excluding deleted files from config.contents
         const configCopy = { ...this.config };
         const newContents: string[] = [];
         for (let fname of configCopy.contents) {
-            const file = this.rootFolder.getFileData(fname);
+            const file = await this.rootFolder.getFileData(fname);
             if (file && !file.delete) {
                 newContents.push(file.name);
             }
@@ -207,15 +208,15 @@ export class Presentation {
     /**
      * Update the config file with the updated content.
      */
-    updateConfigFile(): void {
-        const configFile = this.getConfigFile();
+    async updateConfigFile(): Promise<void> {
+        const configFile = await this.getConfigFile();
         if (configFile) {
             configFile.content = this.getConfigFileContent();
         }
     }
 
-    isConfigModified(): boolean {
-        const configFile = this.getConfigFile();
+    async isConfigModified(): Promise<boolean> {
+        const configFile = await this.getConfigFile();
         if (configFile) {
             return this.rootFolder.isFileModified(configFile);
         }

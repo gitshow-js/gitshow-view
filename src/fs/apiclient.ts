@@ -5,7 +5,7 @@ export interface ApiClient {
 
 export interface FileSet {
     refreshFolder(): Promise<void>;
-    getFileData(name: string): TrackedFile | null;
+    getFileData(name: string): Promise<TrackedFile | null>;
     readFile(fname: string): Promise<ContentFile>;
     createTrackedFile(fname: string): TrackedFile;
     addFile(file: TrackedFile): void;
@@ -14,6 +14,7 @@ export interface FileSet {
 
 export type TrackedFile = {
     name: string;
+    download_url?: string;
     [key: string]: any;
 }
 
