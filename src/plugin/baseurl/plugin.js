@@ -17,6 +17,7 @@ const Plugin = () => {
         { selector: '.reveal .slides img[src]:not([src*="://"])', attrName: 'src' },  // images
         { selector: '.reveal .slides a[href]:not([href*="://"])', attrName: 'href' }, // links
         { selector: '.reveal .slides source[src]:not([src*="://"])', attrName: 'src' },  // videos
+        { selector: '.reveal .slides iframe[src]:not([src*="://"])', attrName: 'src' },  // iframes
     ];
 
 	let baseUrl;
