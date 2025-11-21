@@ -106,7 +106,8 @@ export class Presentation {
         if (configFile) {
             const url = configFile.download_url;
             if (url) {
-                return url.substring(0, url.length - 'presentation.json'.length);
+                const pos = url.lastIndexOf('/presentation.json'); // the config file name is 'presentation.json'
+                return url.substring(0, pos);
             }
         }
         return null;
