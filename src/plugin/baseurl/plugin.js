@@ -7,7 +7,7 @@
 
 const Plugin = () => {
 	
-	const SLIDES_SELECTOR = '.reveal .slides section';
+	const ASSETS_PREFIX = 'assets/';
 
     /**
      * Elements and attributes where the relative URLs are resolved. This can be extended in the template config
@@ -23,6 +23,7 @@ const Plugin = () => {
 	let baseUrl;
 	let deck;
 	let config;
+	let inlineContent;
 	
     function resolveRelativeAssets() {
         for (let spec of resolvedRelativeAssets) {
@@ -30,18 +31,38 @@ const Plugin = () => {
         }
     }
 
-    function resolveRelativeAsset(selector, attrName, baseUrl) {
+    async function resolveRelativeAsset(selector, attrName, baseUrl) {
         const elements = document.querySelectorAll(selector);
         for (let elem of elements) {
             const src = elem.getAttribute(attrName);
-            const newSrc = `${baseUrl}${src}`;
-            elem.setAttribute(attrName, newSrc);
+			if (inlineContent && src.startsWith(ASSETS_PREFIX)) {
+				// replace with the inline data:url
+				if (config.gitShowPresentation && config.gitShowPresentation.assetsFolder) {
+					const assets = config.gitShowPresentation.assetsFolder;
+					const path = src.substring(ASSETS_PREFIX.length);
+					const file = await assets.getFileData(path);
+					if (file) {
+						const dataUrl = await assets.getDataUrl(path);
+						elem.setAttribute(attrName, dataUrl);
+					} else {
+						console.warn(`gitShow: baseurl: Failed to load asset '${src}' from folder '${assets.name}'`);
+					}
+				}
+			} else if (src && src.startsWith('data:')) {
+				// never replace data URLs
+			} else {
+				// just replace relative URLs with absolute ones
+				const newSrc = `${baseUrl}${src}`;
+				elem.setAttribute(attrName, newSrc);
+			}
         }
     }
 
 	function initResolver(reveal) {
 		deck = reveal;
 		config = deck.getConfig() || {};
+		inlineContent = config.gitShow && config.gitShow.inlineContent
+		//console.log('gitShow: Base URL resolver initialized.', inlineContent ? 'Inlining mode' : 'External mode');
 		if (config.gitShowPresentation && config.gitShowPresentation.baseUrl) {
 			baseUrl = config.gitShowPresentation.baseUrl;
 			//console.log('gitShow: Base URL resolver initialized with base URL:', baseUrl);

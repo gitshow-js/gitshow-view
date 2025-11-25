@@ -26,6 +26,7 @@ export default class GitShow {
     template: any = null;
     main: HTMLElement | null = null;
     deck: Reveal.Api | null = null;
+    inlineContent = true; // whether to inline the external content instead of linking to external resources
 
     /*
         Required plugins can be configured for each template in the template.json file or directly
@@ -89,7 +90,11 @@ export default class GitShow {
             this.template = this.parseTemplate(template, config);
             this.useTemplate(this.template);
             if (config.contents.length > 0) {
-                await this.createContentLinks(config.contents);
+                if (this.inlineContent) {
+                    await this.createContentInline(config.contents);
+                } else {
+                    await this.createContentLinks(config.contents);
+                }
             }
             if (config.reveal) {
                 this.updateRevealConfig(config.reveal);
@@ -266,6 +271,7 @@ export default class GitShow {
     async runReveal() {
         this.populatePlugins();
         this.revealConfig.gitShowPresentation = this.presentation; // expose gitShowPresentation for Reveal.js plugins
+        this.revealConfig.gitShow = this; // expose gitShow for Reveal.js plugins
         this.deck = new Reveal(this.revealConfig);
         await this.deck.initialize();
     }
