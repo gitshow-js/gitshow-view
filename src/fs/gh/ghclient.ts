@@ -1,3 +1,4 @@
+import mime from 'mime';
 import type { ApiClient, FileSet } from "../apiclient";
 import { GHFileSet } from "./ghfileset";
 
@@ -115,8 +116,8 @@ export class GHClient implements ApiClient {
 
     //===================================================================================
 
-    createFileSet(folder: string): FileSet {
-        return new GHFileSet(this, folder);
+    createFileSet(folder: string, recursive: boolean): FileSet {
+        return new GHFileSet(this, folder, recursive);
     }
 
     //===================================================================================
@@ -270,6 +271,19 @@ export class GHClient implements ApiClient {
             data.content = this.decodeBase64Text(data.content);
         }
         return data;
+    }
+
+    async getDataUrl(path: string): Promise<string | null> {
+        const data = await this.getRawFile(path);
+        if (data.content) {
+            let type = mime.getType(path);
+            if (type === null) {
+                type = 'application/octet-stream';
+            }
+            return `data:${type};base64,${data.content}`;
+        } else {
+            return null;
+        }
     }
 
     // see https://developer.mozilla.org/en-US/docs/Glossary/Base64#the_unicode_problem

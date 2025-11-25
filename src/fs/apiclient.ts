@@ -1,12 +1,13 @@
 
 export interface ApiClient {
-    createFileSet(folder: string): FileSet;
+    createFileSet(folder: string, recursive: boolean): FileSet;
 }
 
 export interface FileSet {
     refreshFolder(): Promise<void>;
     getFileData(name: string): Promise<TrackedFile | null>;
     readFile(fname: string): Promise<ContentFile>;
+    getDataUrl(path: string): Promise<string | null>;
     createTrackedFile(fname: string): TrackedFile;
     addFile(file: TrackedFile): void;
     isFileModified(file: TrackedFile): boolean;

@@ -117,9 +117,9 @@ async function startPresentation(path: string): Promise<void> {
         setMode('start loading');
         showMessage("Presentation loading...");
 
-        const rFolder = apiClient.createFileSet('');
-        const tFolder = apiClient.createFileSet('template');
-        const aFolder = apiClient.createFileSet('assets');
+        const rFolder = apiClient.createFileSet('', false);
+        const tFolder = apiClient.createFileSet('template', false);
+        const aFolder = apiClient.createFileSet('assets', true);
         let presentation = new Presentation(rFolder, tFolder, aFolder);
         await presentation.refreshFolder();
         if (presentation.status.ok) {

@@ -25,24 +25,38 @@ export class GHFileSet implements FileSet {
 
     apiClient: GHClient;
     folder: string;  // the folder where the files are tracked
+    recursive: boolean;  // whether to scan subfolders recursively or not
     fileData: GHTrackedFile[] = []; 
     origFiles: { [sha: string]: GHTrackedFile } = {}; 
 
-    constructor(apiClient: GHClient, folder: string) {
+    constructor(apiClient: GHClient, folder: string, recursive: boolean) {
         this.apiClient = apiClient;
         this.folder = folder;
+        this.recursive = recursive;
     }
 
     async refreshFolder(): Promise<void> {
-        const files = await this.apiClient.getFileList(this.folder);
         this.fileData = [];
-        for (let file of files) {
-            if (file.type === 'file') { // only consider regular files
+        await this.recursiveScanFolders(this.folder, this.fileData, '');
+        // update the origFiles map
+        for (let file of this.fileData) {
+            if (file.sha) {
                 this.origFiles[file.sha] = { ...file };
+            }
+        }
+        //console.log('Refreshed folder: ' + this.folder, this.fileData);
+    }
+
+    async recursiveScanFolders(folder: string, fileData: GHTrackedFile[], namePrefix: string): Promise<void> {
+        const files = await this.apiClient.getFileList(folder);
+        for (let file of files) {
+            if (file.type === 'file') {
                 const fset = this;
                 file.getChanges = () => fset.getChanges(file);
                 file.applyChanges = () => fset.applyChanges(file);
-                this.fileData.push(file);
+                fileData.push({...file, name: namePrefix + file.name });
+            } else if (this.recursive && file.type === 'dir') {
+                await this.recursiveScanFolders(folder + '/' + file.name, fileData, namePrefix + file.name + '/');
             }
         }
     }
@@ -87,6 +101,24 @@ export class GHFileSet implements FileSet {
     async readFile(fname: string): Promise<GHContentFile> {
         const path = (this.folder.length > 0) ? this.folder + '/' + fname : fname;
         return await this.apiClient.getFile(path);
+    }
+
+    async getDataUrl(fname: string): Promise<string | null> {
+        const fdata = await this.getFileData(fname);
+        if (fdata) {
+            if (fdata.dataUrl) {
+                return fdata.dataUrl;
+            } else {
+                const path = (this.folder.length > 0) ? this.folder + '/' + fname : fname;
+                const dataUrl = await this.apiClient.getDataUrl(path);
+                if (dataUrl) {
+                    fdata.dataUrl = dataUrl; // cache the dataUrl for future use
+                }
+                return dataUrl;
+            }
+        } else {
+            return null;
+        }
     }
     
     isFileModified(file: GHTrackedFile): boolean {
