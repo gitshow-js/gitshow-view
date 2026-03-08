@@ -35,8 +35,7 @@ function showStructuredMessage(msg: MessageCode) {
             ret = ret + `<p class="code">${msg.code}</p>`;
         }
         if (msg.message) {
-            let msgtext = msg.message;
-            ret = ret + 
+            ret = ret +
                 `<div class="report">
                     <p><span class="error"></span> ${msg.message}</p>
                 </div>`;
@@ -96,7 +95,6 @@ async function startPresentation(path: string): Promise<void> {
 
         apiClient = await createHTTPClient(proto, hostname, folders);
     } else if (pdata.length >= 3 && pdata[0] === 'gh') {
-        const service = pdata[0];
         const user = sanitizeName(pdata[1]);
         let branch = null;
         let repo = pdata[2];
@@ -155,7 +153,7 @@ function parseGitHubCloneUri(uri: string): Coordinates | null {
     const githubCloneUriRegex = /^(https:\/\/github\.com|git@github\.com:)([^/]+)\/([^/]+)(?:\.git)?(?:\/tree\/([^/]+)\/?(.*)?)?$/;
     const match = uri.match(githubCloneUriRegex);
     if (match) {
-        const [, scheme, username, repo, branch, path] = match;
+        const [, , username, repo, branch, path] = match;
         return {
             service: 'gh',
             username,
