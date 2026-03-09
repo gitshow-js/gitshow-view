@@ -9,5 +9,5 @@
     "allowImportingTsExtensions": false,
     "types": []
   },
-  "include": ["src/lib.ts", "src/common", "src/fs", "src/types.ts"]
+  "include": ["src/lib.ts", "src/index.ts", "src/common", "src/fs", "src/types.ts", "src/plugin"]
 }
