@@ -3,6 +3,7 @@ import type { ApiClient, FileSet } from "../apiclient";
 import { GHFileSet } from "./ghfileset";
 
 const API_ROOT = 'https://api.github.com';
+const STORAGE_KEY_TOKEN = 'ghtoken';
 
 export type GHContentFile = {
     content: string;
@@ -141,11 +142,11 @@ export class GHClient implements ApiClient {
     }
   
     hasToken(): boolean {
-		return (localStorage.getItem('ghtoken') !== null);
+		return (localStorage.getItem(STORAGE_KEY_TOKEN) !== null);
 	}
 
 	logout(): void {
-		localStorage.removeItem('ghtoken');
+		localStorage.removeItem(STORAGE_KEY_TOKEN);
 	}
 
     async getBranches(): Promise<any> {
@@ -165,7 +166,7 @@ export class GHClient implements ApiClient {
     }
 
     async login(token: string): Promise<void> {
-        localStorage.setItem('ghtoken', token);
+        localStorage.setItem(STORAGE_KEY_TOKEN, token);
         this.loginStatus = await this.fetchUser();
         this.saveLoginStatus();
     }
@@ -190,6 +191,8 @@ export class GHClient implements ApiClient {
 
     checkAuth(response: Response): boolean {
 		if (response.status == 401 || response.status == 403) {
+			this.logout();
+			this.deleteLoginStatus();
 			if (this.onNotAuthorized) {
 				this.onNotAuthorized();
 			}
@@ -201,7 +204,7 @@ export class GHClient implements ApiClient {
 
 	headers(headers?: { [key: string]: string }): { [key: string]: string } {
 		const src = headers ? headers : {};
-		const token = localStorage.getItem('ghtoken');
+		const token = localStorage.getItem(STORAGE_KEY_TOKEN);
 		if (token) {
 			return {
 				...src,
