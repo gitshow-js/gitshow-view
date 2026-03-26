@@ -280,9 +280,15 @@ export default class GitShow {
      * Creates the content sections by inserting links to markdown filed in the git repo.
      * @param {*} contents 
      */
+    clearMain() {
+        const persistent = Array.from(this.main!.querySelectorAll('[data-persistent]'));
+        this.main!.innerHTML = '';
+        persistent.forEach(el => this.main!.appendChild(el));
+    }
+
     async createContentLinks(contents: string[]) {
         const defaultClass = this.template.defaultClass || 'normal';
-        this.main!.innerHTML = '';
+        this.clearMain();
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
         this.main!.appendChild(reveal);
@@ -307,7 +313,7 @@ export default class GitShow {
      */
     async createContentInline(contents: string[]) {
         const defaultClass = this.template.defaultClass || 'normal';
-        this.main!.innerHTML = '';
+        this.clearMain();
         const reveal = document.createElement('div');
         reveal.setAttribute('class', 'reveal');
         this.main!.appendChild(reveal);

@@ -12,6 +12,7 @@ import { Presentation } from './src/common/presentation.ts';
 import type { Coordinates, MessageCode } from './src/types.js';
 
 let apiClient: ApiClient | null = null;
+let ghAuthClient: GHClient | null = null;
 
 function setMode(mode: string) {
     const el = document.getElementById('gitshow-welcome');
@@ -44,8 +45,27 @@ function showStructuredMessage(msg: MessageCode) {
     }
 }
 
+function updateAuthWidget(client: GHClient | null): void {
+    const statusEl = document.getElementById('gh-auth-status');
+    const loginBtn = document.getElementById('gh-login-btn') as HTMLButtonElement | null;
+    const logoutBtn = document.getElementById('gh-logout-btn') as HTMLButtonElement | null;
+    if (!statusEl || !loginBtn || !logoutBtn) return;
+
+    const loggedIn = client?.hasToken() && client?.loginStatus?.login;
+    if (loggedIn) {
+        statusEl.innerHTML = `Logged in as <strong>${client!.loginStatus.login}</strong>`;
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'block';
+    } else {
+        statusEl.textContent = 'Not logged in';
+        loginBtn.style.display = 'block';
+        logoutBtn.style.display = 'none';
+    }
+}
+
 function authFailed() {
-    console.log('AUTH FAILED');
+    ghAuthClient = null;
+    updateAuthWidget(null);
 }
 
 async function createHTTPClient(proto: string, hostname: string, folders?: string[]): Promise<HTTPClient> {
@@ -72,6 +92,7 @@ async function createGHClient(user: string, repo: string, branch: string | null,
         await apiClient.useDefaultBranch();
     }
     apiClient.onNotAuthorized = authFailed;
+    ghAuthClient = apiClient;
     return apiClient;
 }
 
@@ -225,6 +246,64 @@ if (showButton && showMsg1 && showMsg2 && showUrl && runButton) {
             window.location.href = destUrl;
         }
     }
+}
+
+const ghWidget = document.getElementById('gh-auth-widget');
+let ghPopupHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+function openGhPopup() {
+    if (ghPopupHideTimer) { clearTimeout(ghPopupHideTimer); ghPopupHideTimer = null; }
+    ghWidget?.classList.add('open');
+}
+
+function scheduleCloseGhPopup() {
+    ghPopupHideTimer = setTimeout(() => ghWidget?.classList.remove('open'), 150);
+}
+
+ghWidget?.addEventListener('mouseenter', openGhPopup);
+ghWidget?.addEventListener('mouseleave', scheduleCloseGhPopup);
+document.getElementById('gh-auth-popup')?.addEventListener('mouseenter', openGhPopup);
+document.getElementById('gh-auth-popup')?.addEventListener('mouseleave', scheduleCloseGhPopup);
+
+document.getElementById('gh-login-btn')?.addEventListener('click', () => {
+    sessionStorage.setItem('gh-auth-return', window.location.pathname);
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${new GHClient().CLIENT_ID}`;
+    window.location.href = authUrl;
+});
+
+document.getElementById('gh-logout-btn')?.addEventListener('click', () => {
+    ghAuthClient?.logout();
+    ghAuthClient?.deleteLoginStatus();
+    ghAuthClient = null;
+    updateAuthWidget(null);
+});
+
+// Handle OAuth callback (GitHub redirects back with ?code=xxx)
+const urlParams = new URLSearchParams(window.location.search);
+const oauthCode = urlParams.get('code');
+if (oauthCode) {
+    history.replaceState(null, '', window.location.pathname);
+    const tempClient = new GHClient();
+    tempClient.loginWithAuthCode(oauthCode).then(ok => {
+        if (ok) {
+            tempClient.restoreLoginStatus();
+            ghAuthClient = tempClient;
+            const returnPath = sessionStorage.getItem('gh-auth-return');
+            sessionStorage.removeItem('gh-auth-return');
+            if (returnPath && returnPath !== '/') {
+                window.location.pathname = returnPath;
+                return;
+            }
+        }
+        updateAuthWidget(ghAuthClient);
+    });
+} else {
+    const tempClient = new GHClient();
+    if (tempClient.hasToken()) {
+        tempClient.restoreLoginStatus();
+        ghAuthClient = tempClient;
+    }
+    updateAuthWidget(ghAuthClient);
 }
 
 // Create the api client. Use the params from the path
