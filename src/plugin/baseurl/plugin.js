@@ -6,7 +6,7 @@
  */
 
 const Plugin = () => {
-	
+
 	const ASSETS_PREFIX = 'assets/';
 
     /**
@@ -24,7 +24,7 @@ const Plugin = () => {
 	let deck;
 	let config;
 	let inlineContent;
-	
+
     function resolveRelativeAssets() {
         for (let spec of resolvedRelativeAssets) {
             resolveRelativeAsset(spec.selector, spec.attrName, baseUrl);

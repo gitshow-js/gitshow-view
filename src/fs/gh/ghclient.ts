@@ -103,6 +103,10 @@ export class GHClient implements ApiClient {
         return API_ROOT + '/repos/' + this.username + '/' + this.repository;
     }
 
+    repoListEndpoint(): string {
+        return API_ROOT + '/user/repos?per_page=100&affiliation=owner,collaborator,organization_member';
+    }
+
     fileEndpoint(path: string): string {
         let fpath = this.folder || '';
         if (path && path.length > 0) {
@@ -124,7 +128,10 @@ export class GHClient implements ApiClient {
     //===================================================================================
 
     async getUserRepos(): Promise<any> {
-        const response = await fetch(this.userEndpoint(this.username) + '/repos', {
+        const endpoint = this.hasToken()
+            ? this.repoListEndpoint()
+            : this.userEndpoint(this.username) + '/repos';
+        const response = await fetch(endpoint, {
             headers: this.headers(),
         });
         const data = await response.json();

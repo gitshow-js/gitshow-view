@@ -267,7 +267,7 @@ document.getElementById('gh-auth-popup')?.addEventListener('mouseleave', schedul
 
 document.getElementById('gh-login-btn')?.addEventListener('click', () => {
     sessionStorage.setItem('gh-auth-return', window.location.pathname);
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${new GHClient().CLIENT_ID}`;
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${new GHClient().CLIENT_ID}&scope=repo`;
     window.location.href = authUrl;
 });
 

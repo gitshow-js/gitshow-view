@@ -120,7 +120,7 @@ export class GHFileSet implements FileSet {
             return null;
         }
     }
-    
+
     isFileModified(file: GHTrackedFile): boolean {
         return (this.getChanges(file) !== null);
     }
