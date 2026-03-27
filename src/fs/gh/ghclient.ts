@@ -149,12 +149,12 @@ export class GHClient implements ApiClient {
     }
   
     hasToken(): boolean {
-		return (localStorage.getItem(STORAGE_KEY_TOKEN) !== null);
-	}
+        return (localStorage.getItem(STORAGE_KEY_TOKEN) !== null);
+    }
 
-	logout(): void {
-		localStorage.removeItem(STORAGE_KEY_TOKEN);
-	}
+    logout(): void {
+        localStorage.removeItem(STORAGE_KEY_TOKEN);
+    }
 
     async getBranches(): Promise<any> {
         const response = await fetch(this.repositoryEndpoint() + '/branches', {
@@ -197,48 +197,48 @@ export class GHClient implements ApiClient {
     }
 
     checkAuth(response: Response): boolean {
-		if (response.status == 401 || response.status == 403) {
-			this.logout();
-			this.deleteLoginStatus();
-			if (this.onNotAuthorized) {
-				this.onNotAuthorized();
-			}
-			return false;
-		} else {
-			return true;
-		}
-	}
+        if (response.status == 401 || response.status == 403) {
+            this.logout();
+            this.deleteLoginStatus();
+            if (this.onNotAuthorized) {
+                this.onNotAuthorized();
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
 
-	headers(headers?: { [key: string]: string }): { [key: string]: string } {
-		const src = headers ? headers : {};
-		const token = localStorage.getItem(STORAGE_KEY_TOKEN);
-		if (token) {
-			return {
-				...src,
-				'Authorization': ('token ' + token)
-			};
-		} else {
-			return src;
-		}
-	}
+    headers(headers?: { [key: string]: string }): { [key: string]: string } {
+        const src = headers ? headers : {};
+        const token = localStorage.getItem(STORAGE_KEY_TOKEN);
+        if (token) {
+            return {
+                ...src,
+                'Authorization': ('token ' + token)
+            };
+        } else {
+            return src;
+        }
+    }
 
     saveLoginStatus(): void {
-		window.localStorage.setItem('gitshow-login', JSON.stringify(this.loginStatus));
-	}
+        window.localStorage.setItem('gitshow-login', JSON.stringify(this.loginStatus));
+    }
 
-	deleteLoginStatus(): void {
-		window.localStorage.removeItem('gitshow-login');
-	}
+    deleteLoginStatus(): void {
+        window.localStorage.removeItem('gitshow-login');
+    }
 
-	restoreLoginStatus(): void {
-		const data = window.localStorage.getItem('gitshow-login');
-		if (data) {
-			this.loginStatus = JSON.parse(data);
-		}
-		if (this.loginStatus && this.loginStatus.http_session_token) {
-			this.bearerToken = this.loginStatus.http_session_token;
-		}
-	}
+    restoreLoginStatus(): void {
+        const data = window.localStorage.getItem('gitshow-login');
+        if (data) {
+            this.loginStatus = JSON.parse(data);
+        }
+        if (this.loginStatus && this.loginStatus.http_session_token) {
+            this.bearerToken = this.loginStatus.http_session_token;
+        }
+    }
 
     //===================================================================================
 
