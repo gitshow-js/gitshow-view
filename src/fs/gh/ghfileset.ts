@@ -117,7 +117,9 @@ export class GHFileSet implements FileSet {
                 return dataUrl;
             }
         } else {
-            return null;
+            // File not in local cache (e.g. nested subdir not scanned due to non-recursive FileSet) — try API directly
+            const path = (this.folder.length > 0) ? this.folder + '/' + fname : fname;
+            return await this.apiClient.getDataUrl(path);
         }
     }
 

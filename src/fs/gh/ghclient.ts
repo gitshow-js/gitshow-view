@@ -290,7 +290,7 @@ export class GHClient implements ApiClient {
             if (type === null) {
                 type = 'application/octet-stream';
             }
-            return `data:${type};base64,${data.content}`;
+            return `data:${type};base64,${data.content.replace(/\n/g, '')}`;
         } else {
             return null;
         }

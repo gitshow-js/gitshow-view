@@ -238,9 +238,13 @@ export default class GitShow {
     async importStyle(path: string) {
         let css = await this.presentation!.templateFolder.readFile(path);
         if (css) {
-            let cssdef = css.content;
-            if (this.presentation!.baseUrl) {
+            let cssdef: string;
+            if (this.inlineContent) {
+                cssdef = await this.inlineUrlsInCss(css.content);
+            } else if (this.presentation!.baseUrl) {
                 cssdef = this.replaceUrlsWithBase(css.content, this.presentation!.baseUrl);
+            } else {
+                cssdef = css.content;
             }
             const head = document.head || document.getElementsByTagName('head')[0];
             const style = document.createElement('style');
@@ -250,6 +254,47 @@ export default class GitShow {
         } else {
             console.error('Could not read ' + path);
         }
+    }
+
+    /**
+     * Replaces relative url() references in a CSS string with data: URLs fetched via the API.
+     * Used when inlineContent is true to avoid raw.githubusercontent.com URLs in private repos.
+     */
+    async inlineUrlsInCss(cssString: string): Promise<string> {
+        const urlRegex = /url\(['"]?([^'")\s]+)['"]?\)/g;
+
+        // Collect unique relative URLs
+        const relativeUrls = new Set<string>();
+        let match: RegExpExecArray | null;
+        while ((match = urlRegex.exec(cssString)) !== null) {
+            const url = match[1];
+            if (!url.startsWith('http://') && !url.startsWith('https://') &&
+                !url.startsWith('/') && !url.startsWith('data:')) {
+                relativeUrls.add(url);
+            }
+        }
+        // Fetch all assets concurrently
+        const dataUrlMap = new Map<string, string>();
+        await Promise.all(
+            Array.from(relativeUrls).map(async (url) => {
+                const dataUrl = await this.presentation!.templateFolder.getDataUrl(url);
+                if (dataUrl) {
+                    dataUrlMap.set(url, dataUrl);
+                } else {
+                    console.warn(`gitShow: Could not inline CSS asset: ${url}`);
+                }
+            })
+        );
+        // Replace url() references with data: URLs
+        urlRegex.lastIndex = 0;
+        return cssString.replace(urlRegex, (match, url) => {
+            if (!url.startsWith('http://') && !url.startsWith('https://') &&
+                !url.startsWith('/') && !url.startsWith('data:')) {
+                const dataUrl = dataUrlMap.get(url);
+                if (dataUrl) return `url('${dataUrl}')`;
+            }
+            return match;
+        });
     }
 
     /**
