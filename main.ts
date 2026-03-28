@@ -143,6 +143,7 @@ async function startPresentation(path: string): Promise<void> {
         await presentation.refreshFolder();
         if (presentation.status.ok) {
             let gitShow = new GitShow();
+            gitShow.inlineContent = (apiClient instanceof GHClient) ? apiClient.hasToken() : false;
             await gitShow.init(presentation);
         } else {
             setMode('start');

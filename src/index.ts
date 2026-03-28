@@ -26,7 +26,7 @@ export default class GitShow {
     template: any = null;
     main: HTMLElement | null = null;
     deck: Reveal.Api | null = null;
-    inlineContent = true; // whether to inline the external content instead of linking to external resources
+    inlineContent = false; // whether to inline the external content instead of linking to external resources
 
     /*
         Required plugins can be configured for each template in the template.json file or directly
@@ -99,7 +99,7 @@ export default class GitShow {
             if (config.reveal) {
                 this.updateRevealConfig(config.reveal);
             }
-            if (presentation.baseUrl) { // set base URL for relative links (assets)
+            if (presentation.baseUrl && !this.inlineContent) { // set base URL for relative links (assets); when inlining, assets are resolved by the baseurl plugin instead
                 this.updateRevealConfig({markdown: {baseUrl: presentation.baseUrl}});
             }
             if (config.title) {

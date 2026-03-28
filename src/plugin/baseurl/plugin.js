@@ -34,7 +34,11 @@ const Plugin = () => {
     async function resolveRelativeAsset(selector, attrName, baseUrl) {
         const elements = document.querySelectorAll(selector);
         for (let elem of elements) {
-            const src = elem.getAttribute(attrName);
+            let src = elem.getAttribute(attrName);
+            // Strip ./ prefix that the markdown engine may produce when no baseUrl is set
+            if (inlineContent && src && src.startsWith('./')) {
+                src = src.substring(2);
+            }
             if (inlineContent && src.startsWith(ASSETS_PREFIX)) {
                 // replace with the inline data:url
                 if (config.gitShowPresentation && config.gitShowPresentation.assetsFolder) {
@@ -65,7 +69,8 @@ const Plugin = () => {
         //console.log('gitShow: Base URL resolver initialized.', inlineContent ? 'Inlining mode' : 'External mode');
         if (config.gitShowPresentation && config.gitShowPresentation.baseUrl) {
             baseUrl = config.gitShowPresentation.baseUrl;
-            //console.log('gitShow: Base URL resolver initialized with base URL:', baseUrl);
+            console.log('gitShow: Base URL resolver initialized with base URL:', baseUrl);
+            console.log('inlining mode: ', inlineContent? 'enabled' : 'disabled');
 
             // apply presentation-specicic resolved assets
             if (config.resolvedRelativeAssets) {
