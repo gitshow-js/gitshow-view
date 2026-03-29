@@ -111,14 +111,14 @@ async function startPresentation(path: string): Promise<void> {
     setMode('start');
     let pdata = path.split('/');
     pdata.shift(); //the leading '/' in the path
+    const proto = pdata[0];
 
-    if (pdata.length >= 2 && (pdata[0] === 'http' || pdata[0] === 'https')) {
-        const proto = pdata[0];
+    if (pdata.length >= 2 && (proto === 'http' || proto === 'https')) {
         const hostname = sanitizeHostname(pdata[1]);
         const folders = pdata.slice(2);
 
         apiClient = await createHTTPClient(proto, hostname, folders);
-    } else if (pdata.length >= 3 && pdata[0] === 'gh') {
+    } else if (pdata.length >= 3 && proto === 'gh') {
         const user = sanitizeName(pdata[1]);
         let branch = null;
         let repo = pdata[2];
@@ -138,6 +138,11 @@ async function startPresentation(path: string): Promise<void> {
     if (apiClient) {
         setMode('start loading');
         showMessage("Presentation loading...");
+
+        // Hide the GH authentication widget when not using GH
+        if (proto !== 'gh') {
+            document.getElementById('gh-auth-widget')!.style.display = 'none';
+        }
 
         const rFolder = apiClient.createFileSet('', false);
         const tFolder = apiClient.createFileSet('template', false);
