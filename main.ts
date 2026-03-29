@@ -73,6 +73,9 @@ async function createHTTPClient(proto: string, hostname: string, folders?: strin
     if (folders) {
         baseUrl += '/' + folders.join('/');
     }
+    if (!baseUrl.endsWith('/')) { // The base URL is given by folders only, it must have a trailing slash
+        baseUrl += '/';
+    }
     return new HTTPClient(baseUrl);
 }
 
