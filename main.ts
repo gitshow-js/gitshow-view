@@ -94,9 +94,32 @@ async function createGHClient(user: string, repo: string, branch: string | null,
     } else {
         await apiClient.useDefaultBranch();
     }
-    apiClient.onNotAuthorized = authFailed;
-    ghAuthClient = apiClient;
     return apiClient;
+}
+
+async function createClientFromPath(path: string): Promise<{ client: ApiClient | null; proto: string }> {
+    let pdata = path.split('/');
+    pdata.shift();
+    const proto = pdata[0];
+    let client: ApiClient | null = null;
+
+    if (pdata.length >= 2 && (proto === 'http' || proto === 'https')) {
+        client = await createHTTPClient(proto, sanitizeHostname(pdata[1]), pdata.slice(2));
+    } else if (pdata.length >= 3 && proto === 'gh') {
+        const user = sanitizeName(pdata[1]);
+        let repo = pdata[2];
+        const folders = pdata.slice(3);
+        let branch: string | null = null;
+        const pos = repo.indexOf('@');
+        if (pos > 0) {
+            branch = sanitizeName(repo.substring(pos + 1));
+            repo = sanitizeName(repo.substring(0, pos));
+        } else {
+            repo = sanitizeName(repo);
+        }
+        client = await createGHClient(user, repo, branch, folders);
+    }
+    return { client, proto };
 }
 
 function sanitizeName(inputString: string): string {
@@ -107,32 +130,27 @@ function sanitizeHostname(inputString: string): string {
     return inputString.replace(/[^a-zA-Z0-9-\.]/g, '_');
 }
 
+async function checkPresentation(path: string): Promise<{ ok: boolean; message?: string }> {
+    const { client } = await createClientFromPath(path);
+    if (!client) return { ok: false, message: 'Invalid URL' };
+
+    const presentation = new Presentation(
+        client.createFileSet('', false),
+        client.createFileSet('template', false),
+        client.createFileSet('assets', true)
+    );
+    await presentation.refreshFolder();
+    return presentation.status;
+}
+
 async function startPresentation(path: string): Promise<void> {
     setMode('start');
-    let pdata = path.split('/');
-    pdata.shift(); //the leading '/' in the path
-    const proto = pdata[0];
+    const { client, proto } = await createClientFromPath(path);
+    apiClient = client;
 
-    if (pdata.length >= 2 && (proto === 'http' || proto === 'https')) {
-        const hostname = sanitizeHostname(pdata[1]);
-        const folders = pdata.slice(2);
-
-        apiClient = await createHTTPClient(proto, hostname, folders);
-    } else if (pdata.length >= 3 && proto === 'gh') {
-        const user = sanitizeName(pdata[1]);
-        let branch = null;
-        let repo = pdata[2];
-        const folders = pdata.slice(3);
-
-        let pos = repo.indexOf('@');
-        if (pos > 0) {
-            branch = sanitizeName(repo.substring(pos + 1));
-            repo = sanitizeName(repo.substring(0, pos));
-        } else {
-            repo = sanitizeName(repo);
-        }
-
-        apiClient = await createGHClient(user, repo, branch, folders);
+    if (apiClient instanceof GHClient) {
+        apiClient.onNotAuthorized = authFailed;
+        ghAuthClient = apiClient;
     }
 
     if (apiClient) {
@@ -263,6 +281,9 @@ function tryHTTPUrl(url: string): string | null {
 }
 
 let destUrl: string | null = null;
+let checkTimer: ReturnType<typeof setTimeout> | null = null;
+let checkVersion = 0;
+let lastCheckedInput = '';
 
 const showButton = document.getElementById('gitshow-show');
 const showMsg1 = document.getElementById('gitshow-show1');
@@ -278,27 +299,55 @@ if (showButton && showMsg1 && showMsg2 && showUrl && runButton) {
 
     showUrl.onkeyup = function (ev) {
         const url = (ev.target as HTMLInputElement).value ?? null;
+        if (url === lastCheckedInput) return;
+        lastCheckedInput = url;
+
         const result = document.getElementById('gitshow-desturl');
-        if (result) {
+        const statusEl = document.getElementById('gitshow-checkstatus');
+
+        if (checkTimer) { clearTimeout(checkTimer); checkTimer = null; }
+        checkVersion++;
+        const myVersion = checkVersion;
+
+        if (result && statusEl) {
             if (url.length > 0) {
-                let parsedUrl = tryGitHubUrl(url);
-                if (!parsedUrl) {
-                    parsedUrl = tryHTTPUrl(url);
-                }
+                const parsedUrl = tryGitHubUrl(url) ?? tryHTTPUrl(url);
                 if (parsedUrl) {
                     destUrl = parsedUrl;
                     result.innerHTML = `Your GitShow view URL:<br><a href="${parsedUrl}">${parsedUrl}</a>`;
                     result.setAttribute('class', 'ready');
-                    runButton.style.display = 'inline';
+                    runButton.style.display = 'none';
+                    statusEl.innerHTML = 'Checking...';
+                    statusEl.setAttribute('class', 'checking');
+
+                    checkTimer = setTimeout(async () => {
+                        const checkResult = await checkPresentation(new URL(parsedUrl).pathname);
+                        if (myVersion !== checkVersion) return;
+                        if (checkResult.ok) {
+                            statusEl.innerHTML = '<span class="ok"></span> Presentation found';
+                            statusEl.setAttribute('class', 'valid');
+                            runButton.style.display = 'inline';
+                        } else {
+                            statusEl.innerHTML = `<span class="error"></span> ${checkResult.message ?? 'Presentation not found'}`;
+                            statusEl.setAttribute('class', 'invalid');
+                            runButton.style.display = 'none';
+                        }
+                    }, 1000);
                 } else {
+                    destUrl = null;
                     result.innerHTML = 'Invalid URL. Please open the corresponding GitHub folder in your browser and copy the URL here.'
                         + '<br>Alternatively, you may use any http(s) URL when the presentation is directly accessible via http(s).';
                     result.setAttribute('class', 'notready');
+                    statusEl.innerHTML = '';
+                    statusEl.setAttribute('class', '');
                     runButton.style.display = 'none';
                 }
             } else {
+                destUrl = null;
                 result.innerHTML = '';
                 result.setAttribute('class', 'empty');
+                statusEl.innerHTML = '';
+                statusEl.setAttribute('class', '');
                 runButton.style.display = 'none';
             }
         }

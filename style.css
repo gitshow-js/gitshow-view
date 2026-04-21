@@ -124,6 +124,44 @@
     margin-bottom: 2em;
 }
 
+#gitshow-welcome #gitshow-checkstatus {
+    margin: 0.4em 0 0.5em;
+    min-height: 1.2em;
+    font-size: 0.85rem;
+}
+
+#gitshow-welcome #gitshow-checkstatus .ok,
+#gitshow-welcome #gitshow-checkstatus .error {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-size: cover;
+    vertical-align: text-bottom;
+}
+
+#gitshow-welcome #gitshow-checkstatus .ok {
+    background: url('/css/green-checkmark-line-icon.svg') top left no-repeat;
+    background-size: cover;
+}
+
+#gitshow-welcome #gitshow-checkstatus .error {
+    background: url('/css/red-x-line-icon.svg') top left no-repeat;
+    background-size: cover;
+}
+
+#gitshow-welcome #gitshow-checkstatus.checking {
+    color: #8b949e;
+    font-style: italic;
+}
+
+#gitshow-welcome #gitshow-checkstatus.valid {
+    color: #3fb950;
+}
+
+#gitshow-welcome #gitshow-checkstatus.invalid {
+    color: #f85149;
+}
+
 /* ==== Start and loading mode ==== */
 
 #gitshow-welcome.start h1 {
