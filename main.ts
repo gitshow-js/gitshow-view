@@ -162,6 +162,11 @@ async function startPresentation(path: string): Promise<void> {
     }
 }
 
+/**
+ * Parses a GitHub web URL and returns the coordinates.
+ * @param url The GitHub web URL such as "https://github.com/user/repo/[tree/branch/path]"
+ * @returns A git coordinates object.
+ */
 function parseGitHubUrl(url: string): { service: string; username: string; repo: string; branch: string; path: string } | null {
     //const githubUrlRegex = /^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+)(?:\/([^/]+))?)?\/?$/;
     const githubUrlRegex = /^(?:https?:\/\/?github\.com\/)([^/]+)\/([^/]+)(?:\/tree\/([^/]+)\/?(.*)?)?$/;
@@ -179,6 +184,11 @@ function parseGitHubUrl(url: string): { service: string; username: string; repo:
     return null;
 }
 
+/**
+ * Parses a GitHub clone URL and returns the coordinates.
+ * @param uri The GitHub clone URL such as "https://github.com/user/repo.git".
+ * @returns A git coordinates object.
+ */
 function parseGitHubCloneUri(uri: string): Coordinates | null {
     const githubCloneUriRegex = /^(https:\/\/github\.com|git@github\.com:)([^/]+)\/([^/]+)(?:\.git)?(?:\/tree\/([^/]+)\/?(.*)?)?$/;
     const match = uri.match(githubCloneUriRegex);
@@ -192,10 +202,14 @@ function parseGitHubCloneUri(uri: string): Coordinates | null {
             path: path || '', // Allow multiple folders in the path
         };
     }
-
     return null;
 }
 
+/**
+ * Creates a GitShow URL from a git coordinates object.
+ * @param spec 
+ * @returns 
+ */
 function createGitShowUrl(spec: Coordinates): string {
     let ret = `${window.location.origin}/${spec.service}/${spec.username}/${spec.repo}`;
     if (spec.branch) {
@@ -205,6 +219,47 @@ function createGitShowUrl(spec: Coordinates): string {
         ret = ret + '/' + spec.path;
     }
     return ret;
+}
+
+/**
+ * Tries to create a GitShow URL from a GitHub web URL or clone URI.
+ * @param url The GitHub web URL or clone URI. to parse.
+ * @returns A GitShow URL if successful, or null if not.
+ */
+function tryGitHubUrl(url: string): string | null {
+    let urlData = parseGitHubUrl(url);
+    if (!urlData) {
+        urlData = parseGitHubCloneUri(url);
+    }
+    if (urlData) {
+        return createGitShowUrl(urlData);
+    } else {
+        return null;
+    }
+}
+
+/**
+ * Tries to create a GitShow URL from a HTTP or HTTPS URL.
+ * @param url The HTTP or HTTPS URL to parse.
+ * @returns A GitShow URL if successful, or null if not.
+ */
+function tryHTTPUrl(url: string): string | null {
+    try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+            const service = parsedUrl.protocol.slice(0, -1);
+            let path = parsedUrl.pathname;
+            if (path.startsWith('/')) {
+                path = path.substring(1);
+            }
+            // Reconstruct the path part, ensuring no double slashes if path is empty
+            const pathPart = path ? `/${path}` : '';
+            return `${window.location.origin}/${service}/${parsedUrl.hostname}${pathPart}`;
+        }
+    } catch (e) {
+        // Invalid URL
+    }
+    return null;
 }
 
 let destUrl: string | null = null;
@@ -224,21 +279,20 @@ if (showButton && showMsg1 && showMsg2 && showUrl && runButton) {
     showUrl.onkeyup = function (ev) {
         const url = (ev.target as HTMLInputElement).value ?? null;
         const result = document.getElementById('gitshow-desturl');
-        destUrl = null;
         if (result) {
             if (url.length > 0) {
-                let urlData = parseGitHubUrl(url);
-                if (!urlData) {
-                    // not a GitHub URL, check for a clone URI
-                    urlData = parseGitHubCloneUri(url);
+                let parsedUrl = tryGitHubUrl(url);
+                if (!parsedUrl) {
+                    parsedUrl = tryHTTPUrl(url);
                 }
-                if (urlData) {
-                    destUrl = createGitShowUrl(urlData);
-                    result.innerHTML = `Your GitShow view URL:<br><a href="${destUrl}">${destUrl}</a>`;
+                if (parsedUrl) {
+                    destUrl = parsedUrl;
+                    result.innerHTML = `Your GitShow view URL:<br><a href="${parsedUrl}">${parsedUrl}</a>`;
                     result.setAttribute('class', 'ready');
                     runButton.style.display = 'inline';
                 } else {
-                    result.innerHTML = 'Not a GitHub repository URL. Please open the corresponding GitHub folder in your browser and copy the URL here.';
+                    result.innerHTML = 'Invalid URL. Please open the corresponding GitHub folder in your browser and copy the URL here.'
+                        + '<br>Alternatively, you may use any http(s) URL when the presentation is directly accessible via http(s).';
                     result.setAttribute('class', 'notready');
                     runButton.style.display = 'none';
                 }
