@@ -5,7 +5,7 @@ import './style.css';
 
 import GitShow from './src/index.js';
 import type { ApiClient } from './src/fs/apiclient.ts';
-import { GHClient } from './src/fs/gh/ghclient.ts'
+import { GHClient, loadSession } from './src/fs/gh/ghclient.ts'
 import { HTTPClient } from './src/fs/http/httpclient.ts';
 import { Presentation } from './src/common/presentation.ts';
 
@@ -378,58 +378,25 @@ document.getElementById('gh-auth-popup')?.addEventListener('mouseenter', openGhP
 document.getElementById('gh-auth-popup')?.addEventListener('mouseleave', scheduleCloseGhPopup);
 
 document.getElementById('gh-login-btn')?.addEventListener('click', () => {
-    sessionStorage.setItem('gh-auth-return', window.location.pathname);
-    // CSRF protection: generate a random state, remember it, and verify it on callback.
-    const stateBytes = new Uint8Array(16);
-    crypto.getRandomValues(stateBytes);
-    const state = Array.from(stateBytes, b => b.toString(16).padStart(2, '0')).join('');
-    sessionStorage.setItem('gh-auth-state', state);
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${new GHClient().CLIENT_ID}`
-        + `&scope=repo&state=${encodeURIComponent(state)}`;
-    window.location.href = authUrl;
+    // The OAuth handshake (state, code exchange) is handled entirely server-side.
+    window.location.href = '/auth/login?return=' + encodeURIComponent(window.location.pathname);
 });
 
-document.getElementById('gh-logout-btn')?.addEventListener('click', () => {
-    ghAuthClient?.logout();
-    ghAuthClient?.deleteLoginStatus();
+document.getElementById('gh-logout-btn')?.addEventListener('click', async () => {
+    await ghAuthClient?.logout();
     ghAuthClient = null;
     updateAuthWidget(null);
 });
 
-// Handle OAuth callback (GitHub redirects back with ?code=xxx&state=yyy)
-const urlParams = new URLSearchParams(window.location.search);
-const oauthCode = urlParams.get('code');
-const oauthState = urlParams.get('state');
-const expectedState = sessionStorage.getItem('gh-auth-state');
-sessionStorage.removeItem('gh-auth-state');
-if (oauthCode && expectedState && oauthState === expectedState) {
-    history.replaceState(null, '', window.location.pathname);
-    const tempClient = new GHClient();
-    tempClient.loginWithAuthCode(oauthCode).then(ok => {
-        if (ok) {
-            tempClient.restoreLoginStatus();
-            ghAuthClient = tempClient;
-            const returnPath = sessionStorage.getItem('gh-auth-return');
-            sessionStorage.removeItem('gh-auth-return');
-            if (returnPath && returnPath !== '/') {
-                window.location.pathname = returnPath;
-                return;
-            }
-        }
-        updateAuthWidget(ghAuthClient);
-    });
-} else {
-    // Drop any leftover OAuth params (e.g. a code that failed state validation).
-    if (oauthCode) {
-        history.replaceState(null, '', window.location.pathname);
-    }
-    const tempClient = new GHClient();
-    if (tempClient.hasToken()) {
-        tempClient.restoreLoginStatus();
-        ghAuthClient = tempClient;
-    }
-    updateAuthWidget(ghAuthClient);
+// Load the current login session from the server (BFF). This must complete
+// before startPresentation() so the inlineContent decision sees the right state.
+await loadSession();
+const sessionClient = new GHClient();
+if (sessionClient.hasToken()) {
+    sessionClient.onNotAuthorized = authFailed;
+    ghAuthClient = sessionClient;
 }
+updateAuthWidget(ghAuthClient);
 
 // Create the api client. Use the params from the path
 // in the expected form /service/user/repo/path/elements

@@ -1,0 +1,7 @@
+services:
+  gitshow-view:
+    build: .
+    env_file: .env
+    ports:
+      - "8084:8084"
+    restart: unless-stopped

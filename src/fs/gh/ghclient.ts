@@ -2,8 +2,30 @@ import mime from 'mime';
 import type { ApiClient, FileSet } from "../apiclient";
 import { GHFileSet } from "./ghfileset";
 
-const API_ROOT = 'https://api.github.com';
-const STORAGE_KEY_TOKEN = 'ghtoken';
+// In BFF mode the OAuth token lives server-side. Authenticated requests go to a
+// same-origin proxy that injects the token; anonymous requests (public repos)
+// still hit the GitHub API directly to preserve per-user rate limits.
+const GITHUB_API = 'https://api.github.com';
+const PROXY_API = '/api/gh';
+
+// Cached login session (the GitHub user returned by the server's /auth/me).
+// The presence of a session user is what marks the app as authenticated; the
+// access token itself is never exposed to the browser.
+let sessionUser: any = null;
+
+/**
+ * Loads the current login session from the server (/auth/me) and caches it.
+ * Returns the user object when logged in, or null otherwise.
+ */
+export async function loadSession(): Promise<any> {
+    try {
+        const response = await fetch('/auth/me', { headers: { 'Accept': 'application/json' } });
+        sessionUser = response.ok ? await response.json() : null;
+    } catch {
+        sessionUser = null;
+    }
+    return sessionUser;
+}
 
 export type GHContentFile = {
     content: string;
@@ -12,16 +34,22 @@ export type GHContentFile = {
 
 export class GHClient implements ApiClient {
 
-    CLIENT_ID = '5bc2aa3324e3cb27df55';
-
     username = '';
     repository = '';
     folder = '';
     branch = '';
     defaultBranch = 'main';
     onNotAuthorized: (() => void) | null = null;
-    loginStatus: any = null;
-    bearerToken: string | null = null;
+
+    /** The logged-in GitHub user (from the cached BFF session), or null. */
+    get loginStatus(): any {
+        return sessionUser;
+    }
+
+    /** Base URL for GitHub API calls: same-origin proxy when authenticated. */
+    private apiRoot(): string {
+        return sessionUser ? PROXY_API : GITHUB_API;
+    }
 
     setUser(username: string) {
         this.username = username;
@@ -96,15 +124,15 @@ export class GHClient implements ApiClient {
     //===================================================================================
 
     userEndpoint(username: string): string {
-        return API_ROOT + '/users/' + username;
+        return this.apiRoot() + '/users/' + username;
     }
 
     repositoryEndpoint(): string {
-        return API_ROOT + '/repos/' + this.username + '/' + this.repository;
+        return this.apiRoot() + '/repos/' + this.username + '/' + this.repository;
     }
 
     repoListEndpoint(): string {
-        return API_ROOT + '/user/repos?per_page=100&affiliation=owner,collaborator,organization_member';
+        return this.apiRoot() + '/user/repos?per_page=100&affiliation=owner,collaborator,organization_member';
     }
 
     fileEndpoint(path: string): string {
@@ -140,20 +168,23 @@ export class GHClient implements ApiClient {
 
     //===================================================================================
 
-    async fetchUser(): Promise<any> {
-        const response = await fetch(API_ROOT + '/user', {
-            headers: this.headers(),
-        });
-        const data = await response.json();
-        return data;
-    }
-  
+    /** True when a server-side login session is active. */
     hasToken(): boolean {
-        return (localStorage.getItem(STORAGE_KEY_TOKEN) !== null);
+        return sessionUser !== null;
     }
 
-    logout(): void {
-        localStorage.removeItem(STORAGE_KEY_TOKEN);
+    /** Alias of hasToken() expressed in BFF (session) terms. */
+    isLoggedIn(): boolean {
+        return sessionUser !== null;
+    }
+
+    async logout(): Promise<void> {
+        try {
+            await fetch('/auth/logout', { method: 'POST' });
+        } catch {
+            // ignore network errors on logout
+        }
+        sessionUser = null;
     }
 
     async getBranches(): Promise<any> {
@@ -172,36 +203,11 @@ export class GHClient implements ApiClient {
         return data.default_branch;
     }
 
-    async login(token: string): Promise<void> {
-        localStorage.setItem(STORAGE_KEY_TOKEN, token);
-        this.loginStatus = await this.fetchUser();
-        this.saveLoginStatus();
-    }
-
-    async loginWithAuthCode(code: string): Promise<boolean> {
-        const response = await fetch('https://gitshow.net/token/gh.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'code=' + encodeURIComponent(code),
-        });
-        const data = await response.formData();
-        const accessToken = data.get('access_token');
-        if (accessToken) {
-            // Store the access token and mark the user as authenticated
-            await this.login(accessToken as string);
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
     checkAuth(response: Response): boolean {
         if (response.status == 401 || response.status == 403) {
-            this.logout();
-            this.deleteLoginStatus();
+            // Session expired or insufficient permissions — drop the cached
+            // session and let the UI prompt for re-login.
+            sessionUser = null;
             if (this.onNotAuthorized) {
                 this.onNotAuthorized();
             }
@@ -212,34 +218,10 @@ export class GHClient implements ApiClient {
     }
 
     headers(headers?: { [key: string]: string }): { [key: string]: string } {
-        const src = headers ? headers : {};
-        const token = localStorage.getItem(STORAGE_KEY_TOKEN);
-        if (token) {
-            return {
-                ...src,
-                'Authorization': ('token ' + token)
-            };
-        } else {
-            return src;
-        }
-    }
-
-    saveLoginStatus(): void {
-        window.localStorage.setItem('gitshow-login', JSON.stringify(this.loginStatus));
-    }
-
-    deleteLoginStatus(): void {
-        window.localStorage.removeItem('gitshow-login');
-    }
-
-    restoreLoginStatus(): void {
-        const data = window.localStorage.getItem('gitshow-login');
-        if (data) {
-            this.loginStatus = JSON.parse(data);
-        }
-        if (this.loginStatus && this.loginStatus.http_session_token) {
-            this.bearerToken = this.loginStatus.http_session_token;
-        }
+        // Authenticated requests carry the session cookie automatically (same
+        // origin) and the server injects the token, so no Authorization header
+        // is added here. The optional headers (e.g. Content-Type) pass through.
+        return headers ? headers : {};
     }
 
     //===================================================================================

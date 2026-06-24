@@ -9,18 +9,24 @@
     }
   },
   "types": "./dist/lib/lib.d.ts",
-  "files": ["dist/lib"],
+  "files": [
+    "dist/lib"
+  ],
   "scripts": {
     "dev": "vite",
+    "dev:server": "node --env-file-if-exists=.env --watch server/index.ts",
     "build": "tsc && vite build",
+    "build:server": "tsc -p tsconfig.server.json",
     "build:lib": "vite build --config vite.lib.config.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/dist/index.js"
   },
   "peerDependencies": {
     "mime": "^4.1.0",
     "reveal.js": "^5.2.1"
   },
   "devDependencies": {
+    "@types/node": "^24.13.2",
     "@types/reveal.js": "^5.2.1",
     "mime": "^4.1.0",
     "reveal.js": "^5.2.1",
