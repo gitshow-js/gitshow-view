@@ -379,7 +379,13 @@ document.getElementById('gh-auth-popup')?.addEventListener('mouseleave', schedul
 
 document.getElementById('gh-login-btn')?.addEventListener('click', () => {
     sessionStorage.setItem('gh-auth-return', window.location.pathname);
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${new GHClient().CLIENT_ID}&scope=repo`;
+    // CSRF protection: generate a random state, remember it, and verify it on callback.
+    const stateBytes = new Uint8Array(16);
+    crypto.getRandomValues(stateBytes);
+    const state = Array.from(stateBytes, b => b.toString(16).padStart(2, '0')).join('');
+    sessionStorage.setItem('gh-auth-state', state);
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${new GHClient().CLIENT_ID}`
+        + `&scope=repo&state=${encodeURIComponent(state)}`;
     window.location.href = authUrl;
 });
 
@@ -390,10 +396,13 @@ document.getElementById('gh-logout-btn')?.addEventListener('click', () => {
     updateAuthWidget(null);
 });
 
-// Handle OAuth callback (GitHub redirects back with ?code=xxx)
+// Handle OAuth callback (GitHub redirects back with ?code=xxx&state=yyy)
 const urlParams = new URLSearchParams(window.location.search);
 const oauthCode = urlParams.get('code');
-if (oauthCode) {
+const oauthState = urlParams.get('state');
+const expectedState = sessionStorage.getItem('gh-auth-state');
+sessionStorage.removeItem('gh-auth-state');
+if (oauthCode && expectedState && oauthState === expectedState) {
     history.replaceState(null, '', window.location.pathname);
     const tempClient = new GHClient();
     tempClient.loginWithAuthCode(oauthCode).then(ok => {
@@ -410,6 +419,10 @@ if (oauthCode) {
         updateAuthWidget(ghAuthClient);
     });
 } else {
+    // Drop any leftover OAuth params (e.g. a code that failed state validation).
+    if (oauthCode) {
+        history.replaceState(null, '', window.location.pathname);
+    }
     const tempClient = new GHClient();
     if (tempClient.hasToken()) {
         tempClient.restoreLoginStatus();

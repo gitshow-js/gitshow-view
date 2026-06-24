@@ -179,10 +179,12 @@ export class GHClient implements ApiClient {
     }
 
     async loginWithAuthCode(code: string): Promise<boolean> {
-        const response = await fetch('https://gitshow.net/token/gh.php?code=' + encodeURIComponent(code), {
-            method: 'GET',
+        const response = await fetch('https://gitshow.net/token/gh.php', {
+            method: 'POST',
             headers: {
-            }
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'code=' + encodeURIComponent(code),
         });
         const data = await response.formData();
         const accessToken = data.get('access_token');
