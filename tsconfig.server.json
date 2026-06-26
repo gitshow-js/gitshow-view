@@ -5,6 +5,7 @@
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "types": ["node"],
+    "composite": true,
     "outDir": "server/dist",
     "rootDir": "server",
 
